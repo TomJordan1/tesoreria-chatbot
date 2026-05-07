@@ -1,0 +1,12 @@
+# Credenciales y secretos
+cred.json
+
+# Entornos virtuales
+venv/
+env/
+
+# Archivos cacheados de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
