@@ -43,7 +43,7 @@ Antes de empezar, necesitas obtener dos claves gratuitas para que el bot funcion
 
 **1. Clona el repositorio:**
 ```bash
-git clone [https://github.com/TomJordan1/toribio_bot.git](https://github.com/TomJordan1/toribio_bot.git)
+git clone https://github.com/TomJordan1/toribio_bot.git
 cd toribio_bot
 
 ```
