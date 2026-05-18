@@ -96,7 +96,7 @@ async def telegram_webhook(request: Request):
                 respuesta = f"❌ No pude detectar texto. Detalle: {error_msg}"
 
         except Exception as e:
-            # MAGIA DE DEBUGGING: Esto imprime la línea exacta del error en tu terminal
+            # Esto imprime la línea exacta del error en tu terminal
             error_trace = traceback.format_exc()
             print("\n--- ERROR DETECTADO ---")
             print(error_trace)
