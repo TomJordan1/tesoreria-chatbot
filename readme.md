@@ -84,7 +84,7 @@ OCR_API_KEY=tu_api_key_de_ocr_aqui
 **2. Credenciales de Google Sheets:**
 
 * Ve a Google Cloud Console, crea un proyecto y habilita la **Google Sheets API** y la **Google Drive API**.
-* Genera una cuenta de servicio (Service Account) y descarga el archivo JSON de las claves.
+* Genera una cuenta de servicio (Service Account) en la opción "IAM y administración" y descarga el archivo JSON de las claves.
 * Renombra el archivo a `cred.json` y colócalo en la raíz del proyecto.
 * Crea una hoja de cálculo en Google Sheets llamada **Gastos**.
 * Comparte esa hoja dándole permisos de "Editor" al correo de tu Service Account (el que termina en `@...iam.gserviceaccount.com`).
