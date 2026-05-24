@@ -1,0 +1,57 @@
+<h1 align="center">
+    <font color="#1a365d">COMPROBANTE DE GASTO INTERNO</font>
+</h1>
+<br>
+<p>
+    <b>ID del Reporte:</b> #{{id}}<br>
+    <b>Fecha de Registro:</b> {{fecha_registro}}
+</p>
+<br>
+<table width="100%" border="1">
+    <thead>
+        <tr bgcolor="#2b6cb0">
+            <th width="35%" align="left"><font color="#ffffff"> Concepto / Campo</font></th>
+            <th width="65%" align="left"><font color="#ffffff"> Detalle del Comprobante</font></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><b> Responsable / Comprador</b></td>
+            <td> {{comprador}}</td>
+        </tr>
+        <tr bgcolor="#f7fafc">
+            <td><b> Proyecto o Actividad</b></td>
+            <td> {{proyecto}}</td>
+        </tr>
+        <tr>
+            <td><b> Categoría de Gasto</b></td>
+            <td> {{categoria_gasto}}</td>
+        </tr>
+        <tr bgcolor="#f7fafc">
+            <td><b> RUC del Proveedor</b></td>
+            <td> {{ruc}}</td>
+        </tr>
+        <tr>
+            <td><b> Nombre del Proveedor</b></td>
+            <td> {{proveedor}}</td>
+        </tr>
+        <tr bgcolor="#f7fafc">
+            <td><b> Fecha de Emisión</b></td>
+            <td> {{fecha}}</td>
+        </tr>
+        <tr>
+            <td><b> Monto Total Final</b></td>
+            <td><b> S/ {{monto}}</b></td>
+        </tr>
+        <tr bgcolor="#f7fafc">
+            <td><b> Estado de Reembolso</b></td>
+            <td> <i>{{estado_reembolso}}</i></td>
+        </tr>
+    </tbody>
+</table>
+<br>
+<p align="center">
+    <font color="#718096" size="10">
+        <i>Este documento es una validación automatizada para auditorías del grupo estudiantil.</i>
+    </font>
+</p>

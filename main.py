@@ -11,6 +11,7 @@ load_dotenv()
 
 # Importar nuestros módulos
 from servicios import extraer_datos_recibo_llm, guardar_en_sheets
+from generador_pdf import generar_comprobante_pdf
 
 app = FastAPI()
 
@@ -94,8 +95,9 @@ async def telegram_webhook(request: Request):
                     f"💰 **Monto:** S/ {d['monto']}\n"
                     f"📅 **Fecha Emisión:** {d['fecha']}\n\n"
                     f"¿Los datos son correctos?\n"
-                    f"1) Sí\n"
-                    f"2) Editar"
+                    f"1) Solo guardar en Sheets\n"
+                    f"2) Guardar en Sheets y generar PDF\n"
+                    f"3) Editar datos"
                 )
             else:
                 respuesta = "❌ Ocurrió un error al analizar la imagen con el modelo de visión."
@@ -127,14 +129,15 @@ async def telegram_webhook(request: Request):
     # Estado: Confirmar
     if state["step"] == "confirmar":
         text = message.get("text", "").strip().lower()
-        if text in ["1", "sí", "si", "yes"]:
+
+        # Opción 1: Solo guardar en Sheets
+        if text in ["1", "solo guardar", "guardar", "sí", "si"]:
             try:
-                guardar_en_sheets(state["datos"])
+                id_asignado = guardar_en_sheets(state["datos"])
                 d = state["datos"]
                 respuesta = (
-                    f"✅ ¡Gasto registrado con éxito!\n"
-                    f"El índice correlativo se asignó automáticamente en la lista.\n"
-                    f"🏢 Proveedor: {d['proveedor']} | 💰 S/ {d['monto']}\n\n"
+                    f"✅ ¡Gasto registrado en Sheets con el ID #{id_asignado}!\n"
+                    f"*(No se generó PDF por elección del usuario)*\n\n"
                     f"📥 Envía otra foto para continuar."
                 )
             except Exception as e:
@@ -144,12 +147,56 @@ async def telegram_webhook(request: Request):
                 user_states.pop(chat_id, None)
 
             requests.post(
-                f"{TELEGRAM_API_URL}/sendMessage",
-                json={"chat_id": chat_id, "text": respuesta}
+                f"{TELEGRAM_API_URL}/sendMessage", 
+                json={"chat_id": chat_id, "text": respuesta, "parse_mode": "Markdown"}
             )
             return {"status": "ok"}
 
-        elif text in ["2", "editar"]:
+        # Opción 2: Guardar en Sheets y generar PDF
+        elif text in ["2", "pdf", "guardar y pdf"]:
+            try:
+                id_asignado = guardar_en_sheets(state["datos"])
+                d = state["datos"]
+                
+                requests.post(
+                    f"{TELEGRAM_API_URL}/sendMessage",
+                    json={"chat_id": chat_id, "text": f"✅ Gasto registrado (ID #{id_asignado}). Generando PDF..."}
+                )
+
+                # Compilación del PDF usando el módulo independiente generador_pdf.py
+                nombre_pdf_local = f"comprobante_{id_asignado}.pdf"
+                try:
+                    generar_comprobante_pdf(d, nombre_pdf_local)
+                    
+                    with open(nombre_pdf_local, 'rb') as archivo_adjunto:
+                        requests.post(
+                            f"{TELEGRAM_API_URL}/sendDocument",
+                            data={"chat_id": chat_id, "caption": f"📄 Comprobante de Gasto Interno - ID #{id_asignado}\n📥 Envía otra foto para continuar."},
+                            files={"document": archivo_adjunto}
+                        )
+                except Exception as pdf_error:
+                    print(f"Error generando o enviando PDF: {pdf_error}")
+                    requests.post(
+                        f"{TELEGRAM_API_URL}/sendMessage",
+                        json={"chat_id": chat_id, "text": "⚠️ El gasto se guardó, pero ocurrió un problema al compilar el PDF."}
+                    )
+                finally:
+                    if os.path.exists(nombre_pdf_local):
+                        os.remove(nombre_pdf_local)
+
+            except Exception as e:
+                traceback.print_exc()
+                requests.post(
+                    f"{TELEGRAM_API_URL}/sendMessage", 
+                    json={"chat_id": chat_id, "text": "⚠️ Error de conexión con Google Sheets."}
+                )
+            finally:
+                user_states.pop(chat_id, None)
+
+            return {"status": "ok"}
+
+        # Opción 3: Entrar al modo edición
+        elif text in ["3", "editar"]:
             state["step"] = "editar"
             respuesta = (
                 "✏️ **Modo edición:**\n"
@@ -168,11 +215,12 @@ async def telegram_webhook(request: Request):
         else:
             requests.post(
                 f"{TELEGRAM_API_URL}/sendMessage",
-                json={"chat_id": chat_id, "text": "Por favor responde:\n1) Sí\n2) Editar"}
+                json={"chat_id": chat_id, "text": "Por favor responde:\n1) Solo guardar\n2) Guardar y crear PDF\n3) Editar"}
             )
             return {"status": "ok"}
 
-    # Estado: Editar
+
+    # --- ESTADO: EDITAR ---
     if state["step"] == "editar":
         text = message.get("text", "").strip()
         if text.lower() == "/cancelar":
@@ -200,7 +248,7 @@ async def telegram_webhook(request: Request):
             )
             return {"status": "ok"}
 
-        # Aplicar correcciones manuales hechas por el usuario
+        # Aplicar correcciones manuales hechas por el usuario al estado temporal
         d = state["datos"]
         d["proveedor"] = proveedor
         d["ruc"] = ruc
@@ -209,21 +257,26 @@ async def telegram_webhook(request: Request):
         d["categoria_gasto"] = categoria_gasto
         d["proyecto"] = proyecto
 
-        try:
-            guardar_en_sheets(d)
-            respuesta = (
-                f"✅ ¡Gasto corregido y registrado exitosamente!\n"
-                f"🏢 {d['proveedor']} | 💰 S/ {d['monto']} | 📂 {d['proyecto']}\n"
-                f"📥 Envía otra foto cuando desees."
-            )
-        except Exception as e:
-            traceback.print_exc()
-            respuesta = "⚠️ Error al actualizar los datos en Google Sheets."
-        finally:
-            user_states.pop(chat_id, None)
+        # Devolver al estado confirmar para que el usuario elija si quiere PDF o no con los nuevos cambios
+        state["step"] = "confirmar"
+
+        respuesta = (
+            f"📝 **Datos corregidos exitosamente.**\n"
+            f"¿Qué deseas hacer ahora con este registro?\n\n"
+            f"👤 **Comprador:** {d['comprador']}\n"
+            f"🆔 **RUC:** {d['ruc']}\n"
+            f"🏢 **Proveedor:** {d['proveedor']}\n"
+            f"📂 **Proyecto:** {d['proyecto']}\n"
+            f"🏷️ **Categoría:** {d['categoria_gasto']}\n"
+            f"💰 **Monto:** S/ {d['monto']}\n"
+            f"📅 **Fecha:** {d['fecha']}\n\n"
+            f"1) Solo guardar en Sheets\n"
+            f"2) Guardar en Sheets y generar PDF\n"
+            f"3) Volver a editar"
+        )
 
         requests.post(
             f"{TELEGRAM_API_URL}/sendMessage",
-            json={"chat_id": chat_id, "text": respuesta}
+            json={"chat_id": chat_id, "text": respuesta, "parse_mode": "Markdown"}
         )
         return {"status": "ok"}

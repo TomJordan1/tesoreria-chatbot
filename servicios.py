@@ -76,7 +76,8 @@ def guardar_en_sheets(datos: dict):
     # Si solo están las cabeceras (1 fila), len() será 1, por lo que el próximo ID será 1.
     id_autoincremental = len(todas_las_filas)
     
-    # NUEVO ORDEN DE COLUMNAS EN TU GOOGLE SHEETS:
+    datos["id"] = id_autoincremental
+    
     # ID | Fecha Registro | Comprador | RUC | Proveedor | Proyecto/Actividad | Categoría Gasto | Monto | Fecha Comprobante | Estado Reembolso
     fila = [
         id_autoincremental,
@@ -91,3 +92,4 @@ def guardar_en_sheets(datos: dict):
         datos["estado_reembolso"]
     ]
     sheet.append_row(fila)
+    return id_autoincremental
