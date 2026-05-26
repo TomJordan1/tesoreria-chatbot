@@ -280,3 +280,27 @@ async def telegram_webhook(request: Request):
             json={"chat_id": chat_id, "text": respuesta, "parse_mode": "Markdown"}
         )
         return {"status": "ok"}
+
+@app.on_event("shutdown")
+def aviso_de_hibernacion():
+    # Si nadie estaba a mitad de un trámite, Toribio se duerme en silencio sin molestar a nadie.
+    if not user_states:
+        return 
+
+    mensaje_toribio = (
+        "¡Muuu! 🐮💤\n\n"
+        "El prado se quedó muy calladito y me dio sueñito, así que me voy a tomar una siesta. \n\n"
+        "Como mi memoria es cortita, acabo de olvidar el recibo que estábamos revisando. 🌿 "
+        "Cuando me necesites, vuelve a enviarme la foto, pero dame unos 50 segunditos para "
+        "desperezarme bien antes de responderte. ¡Nos vemos lueguito!"
+    )
+    
+    # Toribio le avisa automáticamente a los usuarios que dejó "en espera"
+    for chat_id in list(user_states.keys()):
+        try:
+            requests.post(
+                f"{TELEGRAM_API_URL}/sendMessage",
+                json={"chat_id": chat_id, "text": mensaje_toribio}
+            )
+        except Exception as e:
+            print(f"Error al avisar de la siesta al chat {chat_id}: {e}")
