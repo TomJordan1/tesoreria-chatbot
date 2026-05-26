@@ -6,6 +6,9 @@ cred.json
 venv/
 env/
 
+# Directorios de prueba
+Nueva\ carpeta/
+
 # Archivos cacheados de Python
 __pycache__/
 *.pyc
