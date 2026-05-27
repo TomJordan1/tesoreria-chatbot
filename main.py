@@ -200,10 +200,10 @@ async def telegram_webhook(request: Request):
             state["step"] = "editar"
             respuesta = (
                 "✏️ **Modo edición:**\n"
-                "Modifica los valores manteniendo las 5 barras verticales (`-`):\n\n"
-                "`Proveedor - RUC - Monto - Fecha - Categoría Gasto - Proyecto`\n\n"
+                "Modifica los valores manteniendo las 5 barras verticales (`?`):\n\n"
+                "`Proveedor ? RUC ? Monto ? Fecha ? Categoría Gasto ? Proyecto`\n\n"
                 "Ejemplo:\n"
-                "`Librería UNI - 20123456789 - 35.50 - 24/05/2026 - Materiales - Talleres Cono Norte`\n\n"
+                "`Librería UNI ? 20123456789 ? 35.50 ? 24/05/2026 ? Materiales ? Talleres Cono Norte`\n\n"
                 "O envía /cancelar para anular."
             )
             requests.post(
@@ -231,11 +231,11 @@ async def telegram_webhook(request: Request):
             )
             return {"status": "ok"}
 
-        partes = [p.strip() for p in text.split("-")]
+        partes = [p.strip() for p in text.split("?")]
         if len(partes) != 6 or not all(partes):
             requests.post(
                 f"{TELEGRAM_API_URL}/sendMessage",
-                json={"chat_id": chat_id, "text": "⚠️ Estructura incorrecta. Asegúrate de proveer los 6 campos separados por '-'."}
+                json={"chat_id": chat_id, "text": "⚠️ Estructura incorrecta. Asegúrate de proveer los 6 campos separados por '?'."}
             )
             return {"status": "ok"}
 
