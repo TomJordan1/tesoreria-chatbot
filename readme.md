@@ -12,11 +12,11 @@
 
 Toribio Bot es un chatbot de Telegram diseñado para la gestión y automatización del registro de gastos en tiempo real para proyectos y auditorías internas de grupos estudiantiles. 
 
-El bot recibe fotografías de recibos, boletas o facturas, utiliza un Modelo de Lenguaje Visual (VLM) de última generación para comprender e inyectar la información en una base de datos centralizada de Google Sheets, y ofrece la capacidad opcional de generar al instante un comprobante de validación en PDF procesado 100% de manera local.
+El bot recibe fotografías de recibos, boletas o facturas, utiliza un Modelo de Lenguaje Visual (VLM) para comprender e inyectar la información en una base de datos centralizada de Google Sheets, y ofrece la capacidad opcional de generar al instante un comprobante de validación en PDF procesado 100% de manera local.
 
 ## ✨ Características Principal
 * **Procesamiento de Imágenes con IA:** Integración con la API de Groq utilizando el modelo de visión estable `llama-3.2-11b-vision-instruct` para extraer de forma conceptual campos complejos como RUC, Proveedor, Monto Total, Fecha de Emisión y Categoría.
-* **Flujo Conversacional Interactivo:** Sistema dinámico que permite al usuario confirmar los datos extraídos, editarlos manualmente en bloque mediante un formato estructurado con barras (`|`) o cancelar la operación antes de registrar.
+* **Flujo Conversacional Interactivo:** Sistema dinámico que permite al usuario confirmar los datos extraídos, editarlos manualmente en bloque mediante un formato estructurado con barras (`?`) o cancelar la operación antes de registrar.
 * **Asignación Correlativa:** Generación automática de un índice incremental (`ID`) en la base de datos para facilitar auditorías de gastos futuras.
 * **Generación Local de PDF Externa:** Compilación asíncrona y ultra-rápida de comprobantes en PDF basada en un archivo de diseño separado (`plantilla.html`) usando la memoria RAM, eliminando dependencias pesadas y cuotas limitadas de almacenamiento en la nube.
 * **Limpieza Inmediata de Almacenamiento:** Política de borrado en tiempo real que elimina los PDFs locales del servidor inmediatamente después de ser despachados por Telegram, manteniendo el uso de disco del servidor en 0 MB de forma persistente.
