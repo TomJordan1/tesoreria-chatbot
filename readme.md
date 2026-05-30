@@ -14,7 +14,7 @@ Toribio Bot es un chatbot de Telegram diseñado para la gestión y automatizaci�
 
 El bot recibe fotografías de recibos, boletas o facturas, utiliza un Modelo de Lenguaje Visual (VLM) para comprender e inyectar la información en una base de datos centralizada de Google Sheets, y ofrece la capacidad opcional de generar al instante un comprobante de validación en PDF procesado 100% de manera local.
 
-## ✨ Características Principal
+## ✨ Características
 * **Procesamiento de Imágenes con IA:** Integración con la API de Groq utilizando el modelo de visión estable `llama-3.2-11b-vision-instruct` para extraer de forma conceptual campos complejos como RUC, Proveedor, Monto Total, Fecha de Emisión y Categoría.
 * **Flujo Conversacional Interactivo:** Sistema dinámico que permite al usuario confirmar los datos extraídos, editarlos manualmente en bloque mediante un formato estructurado con barras (`?`) o cancelar la operación antes de registrar.
 * **Asignación Correlativa:** Generación automática de un índice incremental (`ID`) en la base de datos para facilitar auditorías de gastos futuras.
@@ -27,7 +27,7 @@ El bot recibe fotografías de recibos, boletas o facturas, utiliza un Modelo de 
 * **Manipulación de PDFs:** `fpdf2` (conversión nativa y ligera de HTML a PDF en local).
 * **Integración de Datos:** Google Drive & Google Sheets API a través de la librería `gspread`.
 
-## 📂 Estructura de Archivos del Directorio
+## 📂 Estructura del repositorio
 ```text
 toribio_bot/
 │
@@ -36,6 +36,6 @@ toribio_bot/
 ├── generador_pdf.py     # Módulo encargado de leer el HTML, inyectar variables y compilar el PDF local.
 ├── plantilla.html       # Molde de diseño y estructura visual con etiquetas {{campo}} para el PDF.
 ├── requirements.txt     # Dependencias y librerías de Python requeridas para producción.
-├── cred.json            # Archivo de claves privadas de la Cuenta de Servicio de Google Cloud (ignorado en git).
-├── .env                 # Variables de entorno y tokens de autenticación estrictamente secretos.
+├── **cred.json          # Archivo de claves privadas de la Cuenta de Servicio de Google Cloud (ignorado en git).
+├── **.env               # Variables de entorno y tokens de autenticación estrictamente secretos (ignorado en git).
 └── toribio_telegram.png # Imagen de identidad visual del bot para documentación.
