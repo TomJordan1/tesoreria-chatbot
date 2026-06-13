@@ -10,11 +10,12 @@ from servicios import obtener_saldo_actual, extraer_datos_recibo_llm, guardar_en
 from generador_pdf import generar_comprobante_pdf
 
 app = FastAPI()
-
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+if not TELEGRAM_TOKEN:
+    raise ValueError("🚨 ERROR: Falta TELEGRAM_TOKEN en el archivo .env")
+
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
-# Diccionario complejo de estados para la máquina secuencial
 user_states = {}
 
 @app.get("/")
@@ -24,61 +25,62 @@ def home():
 def enviar_mensaje(chat_id, texto):
     requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={"chat_id": chat_id, "text": texto, "parse_mode": "Markdown"})
 
-def procesar_imagen_y_confirmar(chat_id):
-    """Descarga la imagen, llama a Groq con el contexto y muestra el resumen."""
+def mostrar_resumen_y_opciones(chat_id):
+    """Muestra el resumen final con la opción de editar restaurada."""
     state = user_states[chat_id]
-    enviar_mensaje(chat_id, "⚙️ Cruzando imagen con tu contexto usando IA. Dame un momento...")
+    d = state["datos_procesados"]
+    resumen = (
+        f"🧾 **¡Acabé de revisarlo! Aquí tienes el resumen:**\n\n"
+        f"📅 **Fecha:** {d.get('fecha')}\n"
+        f"🏷️ **Concepto:** {d.get('concepto')}\n"
+        f"🔄 **Tipo:** {d.get('tipo')} ({d.get('ing_eg')})\n"
+        f"📌 **Motivo:** {d.get('motivo')}\n"
+        f"👤 **Acreedor:** {d.get('acreedor')}\n"
+        f"👤 **Deudor:** {d.get('deudor')}\n"
+        f"🏢 **Proveedor:** {d.get('proveedor')} (RUC: {d.get('ruc')})\n"
+        f"⚖️ **Estado:** {d.get('estado')}\n"
+        f"💰 **Monto:** S/ {d.get('monto')}\n\n"
+        f"¿Qué te parece? ¿Lo guardamos en mi registro?\n"
+        f"1) Sí, guardar en la base de datos\n"
+        f"2) Guardar y generarme un PDF\n"
+        f"3) Editar algunos datos\n"
+        f"O envía /cancelar si nos equivocamos"
+    )
+    enviar_mensaje(chat_id, resumen)
+
+def procesar_imagen_y_confirmar(chat_id):
+    state = user_states[chat_id]
+    enviar_mensaje(chat_id, "🐂 ¡Muuu! Estoy mirando tu comprobante con mis ojitos de torito y cruzándolo con lo que me contaste. Dame un segundito...")
     
     try:
-        # Obtener imagen
         file_info = requests.get(f"{TELEGRAM_API_URL}/getFile?file_id={state['file_id']}").json()
         file_path = file_info["result"]["file_path"]
         image_bytes = requests.get(f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}").content
 
-        # Consolidar contexto manual si lo hay
         contexto = state.get("contexto_texto", "")
         if not contexto:
             c_man = state.get("contexto_manual", {})
             contexto = f"Tipo: {c_man.get('tipo', '')}, Motivo: {c_man.get('motivo', '')}, Acreedor: {c_man.get('acreedor', '')}, Deudor: {c_man.get('deudor', '')}"
 
-        # Llamar al Super-Prompt
         datos_ia = extraer_datos_recibo_llm(image_bytes, contexto)
 
         if "error" not in datos_ia:
             state["step"] = "confirmar"
             state["datos_procesados"] = datos_ia
-            
-            resumen = (
-                f"🧾 **Datos Procesados (Listo para guardar):**\n\n"
-                f"📅 **Fecha:** {datos_ia.get('fecha')}\n"
-                f"🏷️ **Concepto:** {datos_ia.get('concepto')}\n"
-                f"🔄 **Tipo:** {datos_ia.get('tipo')} ({datos_ia.get('ing_eg')})\n"
-                f"📌 **Motivo:** {datos_ia.get('motivo')}\n"
-                f"👤 **Acreedor:** {datos_ia.get('acreedor')}\n"
-                f"👤 **Deudor:** {datos_ia.get('deudor')}\n"
-                f"💰 **Monto:** S/ {datos_ia.get('monto')}\n"
-                f"⚖️ **Saldo Previo en Caja:** S/ {state['saldo_previo']}\n\n"
-                f"¿Guardar en la base de datos?\n"
-                f"1) Sí, registrar ahora\n"
-                f"2) Guardar y generar PDF de respaldo\n"
-                f"3) /cancelar"
-            )
-            enviar_mensaje(chat_id, resumen)
+            mostrar_resumen_y_opciones(chat_id)
         else:
-            enviar_mensaje(chat_id, "❌ Error al analizar la imagen con Groq.")
+            enviar_mensaje(chat_id, "🐂 ¡Uy! Mis pezuñas resbalaron y no pude leer bien la imagen. ¿Podemos intentarlo de nuevo?")
             user_states.pop(chat_id, None)
 
     except Exception as e:
         traceback.print_exc()
-        enviar_mensaje(chat_id, "⚠️ Error interno durante el procesamiento.")
+        enviar_mensaje(chat_id, "🐂 ¡Muuu! Me enredé un poco con los cables del prado. Ocurrió un problemita interno.")
         user_states.pop(chat_id, None)
-
 
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
     data = await request.json()
-    if "message" not in data:
-        return {"status": "ok"}
+    if "message" not in data: return {"status": "ok"}
 
     message = data["message"]
     chat_id = str(message["chat"]["id"])
@@ -91,124 +93,126 @@ async def telegram_webhook(request: Request):
             "contexto_manual": {}
         }
         
-        # Validar Saldo Inicial Bloqueante
         saldo_actual = obtener_saldo_actual()
         if saldo_actual is None:
             user_states[chat_id]["step"] = "pedir_saldo_base"
-            enviar_mensaje(chat_id, "⚠️ **Base de datos vacía.**\nEste es el primer registro. Por favor, escribe el **Saldo Base / Inicial** en caja (ej. 1500.50) para poder iniciar las operaciones.")
+            enviar_mensaje(chat_id, "¡Hola! 🤔 Veo que mi pastizal está limpiecito y es el primer registro en la base de datos.\nPara poder calcular bien todo, por favor dime, ¿cuál es el **Saldo Base / Inicial** en caja? (ej. 1500.50)")
             return {"status": "ok"}
         
         user_states[chat_id]["saldo_previo"] = saldo_actual
 
-        # Bifurcación automática por leyenda
         if user_states[chat_id]["caption"]:
             user_states[chat_id]["contexto_texto"] = user_states[chat_id]["caption"]
             procesar_imagen_y_confirmar(chat_id)
         else:
             user_states[chat_id]["step"] = "elegir_metodo"
-            enviar_mensaje(chat_id, "Tengo la foto. ¿Cómo completamos los datos faltantes?\n\n✍️ Escribe **'manual'** para que te pregunte uno por uno.\n🗣️ O escribe **todo de golpe aquí** (ej. 'Compra para integración, acreedor Proyecta, deudor el museo').")
-        
+            enviar_mensaje(chat_id, "¡Recibido! Tengo la fotito en mis pezuñas. ¿Cómo me cuentas el resto de los detalles?\n\n✍️ Escribe **'manual'** para que te pregunte paso a paso.\n🗣️ O si prefieres, escríbeme **toda la historia junta aquí** (ej. 'Es una compra para integración, acreedor Proyecta, deudor el museo').")
         return {"status": "ok"}
 
-    # --- 2. MANEJO DE TEXTO (MÁQUINA DE ESTADOS) ---
+    # --- 2. MANEJO DE TEXTO ---
     state = user_states.get(chat_id)
     if not state:
-        enviar_mensaje(chat_id, "👋 ¡Hola, Tesorería! Envíame la foto del comprobante o captura para empezar.\n💡 *Tip: Si pones toda la explicación en la leyenda de la foto, salto las preguntas y lo proceso al instante.*")
+        enviar_mensaje(chat_id, "🟢¡Holiii! Soy Toribio, tu torito verde de confianza. Envíame la foto de tu comprobante o captura para empezar a masticar esos números.\n\n💡 *Tip: Si me pones toda la explicación en la leyenda de la foto, me ahorro el trabajo de preguntarte y vamos más rápido.*")
         return {"status": "ok"}
 
     text = message.get("text", "").strip()
 
     if text.lower() == "/cancelar":
         user_states.pop(chat_id, None)
-        enviar_mensaje(chat_id, "❌ Operación cancelada. Envíame otra foto cuando desees.")
+        enviar_mensaje(chat_id, "¡Entendido! Tiramos esto al pasto. Envíame otra foto cuando quieras empezar de nuevo.")
         return {"status": "ok"}
 
-    # Bloque: Configuración inicial del saldo
     if state.get("step") == "pedir_saldo_base":
         try:
-            saldo_ingresado = float(text.replace(",", ""))
-            state["saldo_previo"] = saldo_ingresado
-            
+            state["saldo_previo"] = float(text.replace(",", ""))
             if state["caption"]:
                 state["contexto_texto"] = state["caption"]
                 procesar_imagen_y_confirmar(chat_id)
             else:
                 state["step"] = "elegir_metodo"
-                enviar_mensaje(chat_id, f"✅ Saldo inicial configurado en S/{saldo_ingresado}.\n\n¿Cómo completamos los datos de esta foto?\n✍️ Escribe **'manual'** o **descríbelo todo aquí**.")
+                enviar_mensaje(chat_id, f"¡Excelente! He guardado nuestro saldo inicial en mi libreta.\n\nAhora sí, sobre la foto: ¿cómo completamos los datos que faltan?\n✍️ Escribe **'manual'** o **cuéntamelo todo de golpe aquí**.")
         except ValueError:
-            enviar_mensaje(chat_id, "Formato incorrecto. Por favor envía solo números (ej. 1500.00).")
+            enviar_mensaje(chat_id, "¡Muuu! Eso no parece un número de pasto válido. Escríbelo solo con números y punto decimal, por favor (ej. 1500.50).")
         return {"status": "ok"}
 
-    # Bloque: Bifurcación
     if state.get("step") == "elegir_metodo":
         if text.lower() == "manual":
             state["step"] = "pedir_tipo"
-            enviar_mensaje(chat_id, "🔹 **Modo Manual: Paso 1/4**\n¿Qué tipo de operación es? (ej. Compra, DeudaXCobrar, Deuda Cobrada)")
+            enviar_mensaje(chat_id, "**Paso 1 de 4:**\n¿Qué tipo de operación es esta? (ej. Compra, DeudaXCobrar, Deuda Cobrada)")
         else:
             state["contexto_texto"] = text
             procesar_imagen_y_confirmar(chat_id)
         return {"status": "ok"}
 
-    # Bloque: Secuencia Manual
-    if state.get("step") == "pedir_tipo":
-        state["contexto_manual"]["tipo"] = text
-        state["step"] = "pedir_motivo"
-        enviar_mensaje(chat_id, "🔹 **Paso 2/4**\n¿Cuál es el Motivo? (ej. Página Web, Integración)")
+    if state.get("step") in ["pedir_tipo", "pedir_motivo", "pedir_acreedor", "pedir_deudor"]:
+        pasos = {"pedir_tipo": ("tipo", "pedir_motivo", "**Paso 2 de 4:**\n¿Cuál es el Motivo? (ej. Página Web, Integración)"),
+                 "pedir_motivo": ("motivo", "pedir_acreedor", "**Paso 3 de 4:**\n¿Quién es el Acreedor? (Escribe el nombre o pon 'No Aplica')"),
+                 "pedir_acreedor": ("acreedor", "pedir_deudor", "**Paso 4 de 4:**\nY por último, ¿quién es el Deudor? (Escribe el nombre o 'No Aplica')")}
+        
+        if state["step"] == "pedir_deudor":
+            state["contexto_manual"]["deudor"] = text
+            procesar_imagen_y_confirmar(chat_id)
+        else:
+            clave, sig_paso, msj = pasos[state["step"]]
+            state["contexto_manual"][clave] = text
+            state["step"] = sig_paso
+            enviar_mensaje(chat_id, msj)
         return {"status": "ok"}
 
-    if state.get("step") == "pedir_motivo":
-        state["contexto_manual"]["motivo"] = text
-        state["step"] = "pedir_acreedor"
-        enviar_mensaje(chat_id, "🔹 **Paso 3/4**\n¿Quién es el Acreedor? (Escribe el nombre o 'No Aplica')")
-        return {"status": "ok"}
-
-    if state.get("step") == "pedir_acreedor":
-        state["contexto_manual"]["acreedor"] = text
-        state["step"] = "pedir_deudor"
-        enviar_mensaje(chat_id, "🔹 **Paso 4/4**\n¿Quién es el Deudor? (Escribe el nombre o 'No Aplica')")
-        return {"status": "ok"}
-
-    if state.get("step") == "pedir_deudor":
-        state["contexto_manual"]["deudor"] = text
-        procesar_imagen_y_confirmar(chat_id)
-        return {"status": "ok"}
-
-    # Bloque: Guardado Final
+    # Bloque: Restauración del Modo de Edición
     if state.get("step") == "confirmar":
         if text in ["1", "2"]:
             try:
-                codigo_asignado = guardar_en_sheets(state["datos_procesados"], state["saldo_previo"])
+                datos_finales = guardar_en_sheets(state["datos_procesados"], state["saldo_previo"])
+                codigo_asignado = datos_finales["codigo"]
                 
                 if text == "1":
-                    enviar_mensaje(chat_id, f"✅ ¡Operación registrada exitosamente bajo el código **{codigo_asignado}**!\n📥 Envía otra foto para continuar.")
-                
+                    enviar_mensaje(chat_id, f"¡Muuucho éxito! Operación guardada en Sheets bajo el código **{codigo_asignado}**.\n📥 ¡Mándame otra fotito para seguir!")
                 elif text == "2":
-                    enviar_mensaje(chat_id, f"✅ Operación **{codigo_asignado}** registrada. Generando PDF...")
-                    
+                    enviar_mensaje(chat_id, f"¡Muuu! Operación **{codigo_asignado}** bien guardadita. Estoy armando tu PDF con mis cuernos...")
                     nombre_pdf = f"comprobante_{codigo_asignado}.pdf"
-                    datos_pdf = state["datos_procesados"]
-                    # Asegurar que código esté inyectado para el PDF
-                    datos_pdf["codigo"] = codigo_asignado 
                     
-                    generar_comprobante_pdf(datos_pdf, nombre_pdf)
+                    generar_comprobante_pdf(datos_finales, nombre_pdf)
                     
                     with open(nombre_pdf, 'rb') as archivo:
                         requests.post(
                             f"{TELEGRAM_API_URL}/sendDocument",
-                            data={"chat_id": chat_id, "caption": f"📄 Respaldo de Tesorería - {codigo_asignado}"},
+                            data={"chat_id": chat_id, "caption": f"📄 Respaldo de tu tesorería - Código: {codigo_asignado}"},
                             files={"document": archivo}
                         )
-                    if os.path.exists(nombre_pdf):
-                        os.remove(nombre_pdf)
+                    if os.path.exists(nombre_pdf): os.remove(nombre_pdf)
 
             except Exception as e:
                 traceback.print_exc()
-                enviar_mensaje(chat_id, "⚠️ Error al guardar en Sheets.")
+                enviar_mensaje(chat_id, "¡Ay, qué torito tan despistado soy! Ocurrió un problema tratando de anotar esto en el Excel.")
             finally:
                 user_states.pop(chat_id, None)
+                
+        elif text in ["3", "editar"]:
+            state["step"] = "editar"
+            respuesta = (
+                "✏️ **Modo edición manual (Mantén las '?' como separador, por favor):**\n\n"
+                "`Fecha ? Concepto ? Tipo ? Ing/Eg ? Motivo ? Acreedor ? Deudor ? Estado ? Monto ? RUC ? Proveedor`\n\n"
+                "*Copia y corrige este ejemplo:* \n`19/10/2025 ? Pago Hosting ? Compra ? Egreso ? Página Web ? No Aplica ? No Aplica ? Pagado ? 46.00 ? No Aplica ? Namecheap`"
+            )
+            enviar_mensaje(chat_id, respuesta)
         else:
-            enviar_mensaje(chat_id, "Responde 1 para guardar, 2 para guardar+PDF, o /cancelar.")
+            enviar_mensaje(chat_id, "Por favor responde con un numerito:\n1) Guardar\n2) Guardar y crear PDF\n3) Editar\nO escribe /cancelar si ya no quieres guardarlo.")
+        return {"status": "ok"}
+
+    # Procesar datos editados
+    if state.get("step") == "editar":
+        partes = [p.strip() for p in text.split("?")]
+        if len(partes) != 11 or not all(partes):
+            enviar_mensaje(chat_id, "¡Ups! Te comiste un poco de pasto. Asegúrate de incluir todos los 11 campos separados por el símbolo '?'.")
+            return {"status": "ok"}
+
+        d = state["datos_procesados"]
+        d["fecha"], d["concepto"], d["tipo"], d["ing_eg"], d["motivo"], d["acreedor"], d["deudor"], d["estado"], d["monto"], d["ruc"], d["proveedor"] = partes
         
+        state["step"] = "confirmar"
+        enviar_mensaje(chat_id, "¡Muuu! Datos masticados y corregidos.")
+        mostrar_resumen_y_opciones(chat_id)
         return {"status": "ok"}
 
 @app.on_event("shutdown")
@@ -218,7 +222,7 @@ def aviso_de_hibernacion():
         return 
 
     mensaje_toribio = (
-        "¡Muuu! 🐮💤\n\n"
+        "¡Muuu! 💤\n\n"
         "El prado se quedó muy calladito y me dio sueñito, así que me voy a tomar una siesta. \n\n"
         "Como mi memoria es cortita, acabo de olvidar el recibo que estábamos revisando. 🌿 "
         "Cuando me necesites, vuelve a enviarme la foto, pero dame unos 50 segunditos para "
