@@ -2,23 +2,16 @@ import os
 from fpdf import FPDF
 
 def generar_comprobante_pdf(datos: dict, ruta_salida: str) -> str:
-    """
-    Lee la plantilla HTML de Tesorería, inyecta las variables cruzadas
-    y genera el archivo PDF local.
-    """
     ruta_plantilla = "plantilla.html"
-    
-    if not os.path.exists(ruta_plantilla):
-        raise FileNotFoundError(f"No se encontró el archivo: {ruta_plantilla}")
+    if not os.path.exists(ruta_plantilla): raise FileNotFoundError(f"Error: {ruta_plantilla}")
 
     with open(ruta_plantilla, "r", encoding="utf-8") as archivo:
         html_texto = archivo.read()
 
-    # Nuevos campos del array principal y procesados
     campos_requeridos = [
-        "codigo", "fecha", "concepto", "tipo", "ing_eg", 
-        "motivo", "nro_operacion", "acreedor", "deudor", 
-        "estado", "ingreso_final", "egreso_final", "saldo"
+        "codigo", "fecha", "nro_operacion_dia", "concepto", "tipo", 
+        "motivo", "acreedor", "deudor", "estado", "ingreso_final", 
+        "egreso_final", "saldo", "ruc", "proveedor", "fecha_registro"
     ]
     
     for campo in campos_requeridos:
