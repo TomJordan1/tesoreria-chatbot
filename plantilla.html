@@ -4,7 +4,8 @@
 <br>
 <p>
     <b>Código de Registro:</b> {{codigo}}<br>
-    <b>Fecha de Operación:</b> {{fecha}}
+    <b>Fecha de Operación:</b> {{fecha}} (Operación Diaria #{{nro_operacion_dia}})<br>
+    <b>Timestamp del Bot:</b> {{fecha_registro}}
 </p>
 <br>
 <table width="100%" border="1">
@@ -15,51 +16,18 @@
         </tr>
     </thead>
     <tbody>
-        <tr>
-            <td><b> Concepto / Descripción</b></td>
-            <td> {{concepto}}</td>
-        </tr>
-        <tr bgcolor="#f7fafc">
-            <td><b> Tipo de Operación</b></td>
-            <td> {{tipo}} ({{ing_eg}})</td>
-        </tr>
-        <tr>
-            <td><b> Motivo del Proyecto</b></td>
-            <td> {{motivo}}</td>
-        </tr>
-        <tr bgcolor="#f7fafc">
-            <td><b> Nro Operación (Voucher)</b></td>
-            <td> {{nro_operacion}}</td>
-        </tr>
-        <tr>
-            <td><b> Entidad Acreedora</b></td>
-            <td> {{acreedor}}</td>
-        </tr>
-        <tr bgcolor="#f7fafc">
-            <td><b> Entidad Deudora</b></td>
-            <td> {{deudor}}</td>
-        </tr>
-        <tr>
-            <td><b> Estado de la Operación</b></td>
-            <td> <i>{{estado}}</i></td>
-        </tr>
-        <tr bgcolor="#e2e8f0">
-            <td><b> Ingreso Generado</b></td>
-            <td> S/ {{ingreso_final}}</td>
-        </tr>
-        <tr bgcolor="#e2e8f0">
-            <td><b> Egreso Ejecutado</b></td>
-            <td> S/ {{egreso_final}}</td>
-        </tr>
+        <tr><td><b> Concepto / Descripción</b></td><td> {{concepto}}</td></tr>
+        <tr bgcolor="#f7fafc"><td><b> Tipo de Operación</b></td><td> {{tipo}}</td></tr>
+        <tr><td><b> Motivo del Proyecto</b></td><td> {{motivo}}</td></tr>
+        <tr bgcolor="#f7fafc"><td><b> Entidad Acreedora</b></td><td> {{acreedor}}</td></tr>
+        <tr><td><b> Entidad Deudora</b></td><td> {{deudor}}</td></tr>
+        <tr bgcolor="#f7fafc"><td><b> Proveedor Comercial</b></td><td> {{proveedor}} (RUC: {{ruc}})</td></tr>
+        <tr><td><b> Estado de la Operación</b></td><td> <i>{{estado}}</i></td></tr>
+        <tr bgcolor="#e2e8f0"><td><b> Ingreso Generado</b></td><td> S/ {{ingreso_final}}</td></tr>
+        <tr bgcolor="#e2e8f0"><td><b> Egreso Ejecutado</b></td><td> S/ {{egreso_final}}</td></tr>
         <tr bgcolor="#2b6cb0">
-            <td><b><font color="#ffffff"> SALDO RESULTANTE EN CAJA</font></b></td>
+            <td><b><font color="#ffffff"> SALDO EN CAJA</font></b></td>
             <td><b><font color="#ffffff"> S/ {{saldo}}</font></b></td>
         </tr>
     </tbody>
 </table>
-<br>
-<p align="center">
-    <font color="#718096" size="10">
-        <i>Documento autogenerado tras validación visual cruzada y matemática.</i>
-    </font>
-</p>
