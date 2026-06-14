@@ -1,10 +1,10 @@
 import os
 from fpdf import FPDF
 
-def generar_comprobante_pdf(datos: dict, ruta_salida: str) -> str:
+def generar_comprobante_pdf(datos: dict, ruta_salida: str, ruta_imagen: str = None) -> str:
     """
     Lee la plantilla HTML de Tesorería, inyecta las variables cruzadas
-    y genera el archivo PDF local.
+    y genera el archivo PDF local. Si se envía una imagen, la adjunta en una 2da página.
     """
     ruta_plantilla = "plantilla.html"
     
@@ -28,11 +28,28 @@ def generar_comprobante_pdf(datos: dict, ruta_salida: str) -> str:
     pdf = FPDF()
     pdf.add_page()
     
-    # FPDF mapea internamente Arial a Helvetica por estándar, 
-    # la definimos aquí antes de imprimir el HTML para asegurar que todo el documento la herede.
+    # FPDF mapea internamente Arial a Helvetica por estándar
     pdf.set_font("helvetica", size=11)
     
     pdf.write_html(html_texto)
+    
+    # --- NUEVA LÓGICA: SEGUNDA PÁGINA PARA LA FOTO ---
+    if ruta_imagen and os.path.exists(ruta_imagen):
+        pdf.add_page()
+        
+        # Título centrado para la evidencia
+        pdf.set_font("helvetica", style="B", size=14)
+        pdf.cell(0, 10, "Evidencia Adjunta", ln=True, align="C")
+        pdf.ln(5)
+        
+        # Insertar imagen. x=20 la centra aproximadamente, w=170 la ajusta al ancho A4
+        try:
+            pdf.image(ruta_imagen, x=20, w=170)
+        except Exception as e:
+            print(f"Error al estampar la imagen con mis pezuñas: {e}")
+            pdf.set_font("helvetica", style="I", size=11)
+            pdf.cell(0, 10, "Ocurrió un error al cargar la imagen original.", ln=True, align="C")
+            
     pdf.output(ruta_salida)
     
     return ruta_salida
