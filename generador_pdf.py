@@ -61,7 +61,7 @@ def generar_comprobante_pdf(datos: dict, ruta_salida: str, ruta_imagen: str = No
         
         # Insertar imagen. x=20 la centra aproximadamente, w=170 la ajusta al ancho A4
         try:
-            pdf.image(ruta_imagen, x=20, w=170)
+            pdf.image(ruta_imagen, x=45, w=120)
         except Exception as e:
             print(f"Error al estampar la imagen con mis pezuñas: {e}")
             if archivos_fuente_existen:
