@@ -1,18 +1,19 @@
 <div style="font-family: Arial, Helvetica, sans-serif;">
   <h1>proyecta UNI</h1>
   
-  <h1 align="center" style="color: #1a365d;">COMPROBANTE DE OPERACIÓN</h1>
+  <h1 align="center"><font color="#1a365d">COMPROBANTE DE OPERACIÓN</font></h1>
   
   <p>
     <strong>Código de Registro:</strong> {{codigo}}<br>
     <strong>Fecha de Operación:</strong> {{fecha}} (Operación Diaria #{{nro_operacion_dia}})
   </p>
-  <br></br>
+  <br>
+  
   <table width="100%" border="1" style="border-collapse: collapse;">
     <thead>
-      <tr bgcolor="#2b6cb0" style="color: #ffffff;">
-        <th width="35%" align="left" style="color:#FFFFFF;">&nbsp;Concepto Contable</th>
-        <th width="65%" align="left" style="color:#FFFFFF;">&nbsp;Detalle Extraído / Asignado</th>
+      <tr>
+        <th width="35%" align="left" bgcolor="#2b6cb0"><font color="#FFFFFF">&nbsp;Concepto Contable</font></th>
+        <th width="65%" align="left" bgcolor="#2b6cb0"><font color="#FFFFFF">&nbsp;Detalle Extraído / Asignado</font></th>
       </tr>
     </thead>
     <tbody>
@@ -20,41 +21,41 @@
         <td>&nbsp;<strong>Concepto / Descripción</strong></td>
         <td>{{concepto}}</td>
       </tr>
-      <tr bgcolor="#f7fafc">
-        <td>&nbsp;<strong>Tipo de Operación</strong></td>
-        <td>{{tipo}}</td>
+      <tr>
+        <td bgcolor="#f7fafc">&nbsp;<strong>Tipo de Operación</strong></td>
+        <td bgcolor="#f7fafc">{{tipo}}</td>
       </tr>
       <tr>
         <td>&nbsp;<strong>Motivo</strong></td>
         <td>{{motivo}}</td>
       </tr>
-      <tr bgcolor="#f7fafc">
-        <td>&nbsp;<strong>Entidad Acreedora</strong></td>
-        <td>{{acreedor}}</td>
+      <tr>
+        <td bgcolor="#f7fafc">&nbsp;<strong>Entidad Acreedora</strong></td>
+        <td bgcolor="#f7fafc">{{acreedor}}</td>
       </tr>
       <tr>
         <td>&nbsp;<strong>Entidad Deudora</strong></td>
         <td>{{deudor}}</td>
       </tr>
-      <tr bgcolor="#f7fafc">
-        <td>&nbsp;<strong>Proveedor Comercial</strong></td>
-        <td>{{proveedor}} (RUC: {{ruc}})</td>
+      <tr>
+        <td bgcolor="#f7fafc">&nbsp;<strong>Proveedor Comercial</strong></td>
+        <td bgcolor="#f7fafc">{{proveedor}} (RUC: {{ruc}})</td>
       </tr>
       <tr>
         <td>&nbsp;<strong>Estado de la Operación</strong></td>
         <td><em>{{estado}}</em></td>
       </tr>
-      <tr bgcolor="#e2e8f0">
-        <td>&nbsp;<strong>Ingreso Generado</strong></td>
-        <td>S/ {{ingreso_final}}</td>
+      <tr>
+        <td bgcolor="#e2e8f0">&nbsp;<strong>Ingreso Generado</strong></td>
+        <td bgcolor="#e2e8f0">S/ {{ingreso_final}}</td>
       </tr>
-      <tr bgcolor="#e2e8f0">
-        <td>&nbsp;<strong>Egreso Ejecutado</strong></td>
-        <td>S/ {{egreso_final}}</td>
+      <tr>
+        <td bgcolor="#e2e8f0">&nbsp;<strong>Egreso Ejecutado</strong></td>
+        <td bgcolor="#e2e8f0">S/ {{egreso_final}}</td>
       </tr>
-      <tr bgcolor="#2b6cb0">
-        <td><strong><font color="#FFFFFF">&nbsp;SALDO EN CAJA</font></strong></td>
-        <td><strong><font color="#FFFFFF">&nbsp;S/ {{saldo}}</font></strong></td>
+      <tr>
+        <td bgcolor="#2b6cb0"><strong><font color="#FFFFFF">&nbsp;SALDO EN CAJA</font></strong></td>
+        <td bgcolor="#2b6cb0"><strong><font color="#FFFFFF">&nbsp;S/ {{saldo}}</font></strong></td>
       </tr>
     </tbody>
   </table>
