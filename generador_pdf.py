@@ -56,10 +56,6 @@ def generar_comprobante_pdf(datos: dict, ruta_salida: str, ruta_imagen: str = No
         else:
             pdf.set_font("helvetica", style="B", size=14)
             
-        pdf.cell(0, 10, "Evidencia Adjunta", ln=True, align="C")
-        pdf.ln(5)
-        
-        # Insertar imagen. x=20 la centra aproximadamente, w=170 la ajusta al ancho A4
         try:
             pdf.image(ruta_imagen, x=45, w=120)
         except Exception as e:
