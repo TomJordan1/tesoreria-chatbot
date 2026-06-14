@@ -50,14 +50,16 @@ def generar_comprobante_pdf(datos: dict, ruta_salida: str, ruta_imagen: str = No
     if ruta_imagen and os.path.exists(ruta_imagen):
         pdf.add_page()
         
-        # Título centrado para la evidencia
+        # Título centrado para la evidencia (si lo habías quitado, puedes borrar estas líneas)
         if archivos_fuente_existen:
             pdf.set_font("Arial", style="B", size=14)
         else:
             pdf.set_font("helvetica", style="B", size=14)
             
         try:
-            pdf.image(ruta_imagen, x=45, w=120)
+            # ¡AQUÍ ESTÁ LA MAGIA! 
+            # Agregamos 'y=20' para anclar la imagen arriba y evitar el salto de página automático.
+            pdf.image(ruta_imagen, x=45, y=20, w=120)
         except Exception as e:
             print(f"Error al estampar la imagen con mis pezuñas: {e}")
             if archivos_fuente_existen:
