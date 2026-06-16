@@ -1,7 +1,7 @@
 import os
 import requests
 import traceback
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, BackgroundTasks
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -27,7 +27,8 @@ def enviar_mensaje(chat_id, texto):
 
 def mostrar_resumen_y_opciones(chat_id):
     """Muestra el resumen final con la opción de editar restaurada."""
-    state = user_states[chat_id]
+    state = user_states.get(chat_id)
+    if not state: return
     d = state["datos_procesados"]
     resumen = (
         f"🧾 **¡Acabé de revisarlo! Aquí tienes el resumen:**\n\n"
@@ -49,7 +50,11 @@ def mostrar_resumen_y_opciones(chat_id):
     enviar_mensaje(chat_id, resumen)
 
 def procesar_imagen_y_confirmar(chat_id):
-    state = user_states[chat_id]
+    state = user_states.get(chat_id)
+    # Seguro por si el usuario canceló mientras la tarea entraba a segundo plano
+    if not state: 
+        return 
+        
     enviar_mensaje(chat_id, "🐂 ¡Muuu! Estoy mirando tu comprobante con mis ojitos de torito y cruzándolo con lo que me contaste. Dame un segundito...")
     
     try:
@@ -78,7 +83,7 @@ def procesar_imagen_y_confirmar(chat_id):
         user_states.pop(chat_id, None)
 
 @app.post("/webhook")
-async def telegram_webhook(request: Request):
+async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
     data = await request.json()
     if "message" not in data: return {"status": "ok"}
 
@@ -103,7 +108,8 @@ async def telegram_webhook(request: Request):
 
         if user_states[chat_id]["caption"]:
             user_states[chat_id]["contexto_texto"] = user_states[chat_id]["caption"]
-            procesar_imagen_y_confirmar(chat_id)
+            # SE DELEGA AL SEGUNDO PLANO
+            background_tasks.add_task(procesar_imagen_y_confirmar, chat_id)
         else:
             user_states[chat_id]["step"] = "elegir_metodo"
             enviar_mensaje(chat_id, "¡Recibido! Tengo la fotito en mis pezuñas. ¿Cómo me cuentas el resto de los detalles?\n\n✍️ Escribe **'manual'** para que te pregunte paso a paso.\n🗣️ O si prefieres, escríbeme **toda la historia junta aquí** (ej. 'Es una compra para integración, acreedor Proyecta, deudor el museo').")
@@ -127,7 +133,8 @@ async def telegram_webhook(request: Request):
             state["saldo_previo"] = float(text.replace(",", ""))
             if state["caption"]:
                 state["contexto_texto"] = state["caption"]
-                procesar_imagen_y_confirmar(chat_id)
+                # SE DELEGA AL SEGUNDO PLANO
+                background_tasks.add_task(procesar_imagen_y_confirmar, chat_id)
             else:
                 state["step"] = "elegir_metodo"
                 enviar_mensaje(chat_id, f"¡Excelente! He guardado nuestro saldo inicial en mi libreta.\n\nAhora sí, sobre la foto: ¿cómo completamos los datos que faltan?\n✍️ Escribe **'manual'** o **cuéntamelo todo de golpe aquí**.")
@@ -141,7 +148,8 @@ async def telegram_webhook(request: Request):
             enviar_mensaje(chat_id, "**Paso 1 de 4:**\n¿Qué tipo de operación es esta? (ej. Compra, DeudaXCobrar, Deuda Cobrada)")
         else:
             state["contexto_texto"] = text
-            procesar_imagen_y_confirmar(chat_id)
+            # SE DELEGA AL SEGUNDO PLANO
+            background_tasks.add_task(procesar_imagen_y_confirmar, chat_id)
         return {"status": "ok"}
 
     if state.get("step") in ["pedir_tipo", "pedir_motivo", "pedir_acreedor", "pedir_deudor"]:
@@ -151,7 +159,8 @@ async def telegram_webhook(request: Request):
         
         if state["step"] == "pedir_deudor":
             state["contexto_manual"]["deudor"] = text
-            procesar_imagen_y_confirmar(chat_id)
+            # SE DELEGA AL SEGUNDO PLANO
+            background_tasks.add_task(procesar_imagen_y_confirmar, chat_id)
         else:
             clave, sig_paso, msj = pasos[state["step"]]
             state["contexto_manual"][clave] = text
@@ -175,14 +184,12 @@ async def telegram_webhook(request: Request):
                     nombre_pdf = f"comprobante_{codigo_asignado}.pdf"
                     nombre_img_temporal = f"img_temp_{codigo_asignado}.jpg"
                     
-                    # --- LÓGICA AGREGADA: DESCARGAR IMAGEN ANTES DEL PDF ---
                     file_info = requests.get(f"{TELEGRAM_API_URL}/getFile?file_id={state['file_id']}").json()
                     file_path = file_info["result"]["file_path"]
                     image_bytes = requests.get(f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}").content
                     
                     with open(nombre_img_temporal, "wb") as f_img:
                         f_img.write(image_bytes)
-                    # -------------------------------------------------------
 
                     generar_comprobante_pdf(datos_finales, nombre_pdf, nombre_img_temporal)
                     
@@ -197,12 +204,10 @@ async def telegram_webhook(request: Request):
                 traceback.print_exc()
                 enviar_mensaje(chat_id, "¡Ay, qué torito tan despistado soy! Ocurrió un problema tratando de anotar esto en el Excel. Habla con el área de TIC.")
             finally:
-                # --- LÓGICA AGREGADA: LIMPIEZA DE ARCHIVOS CREADOS ---
                 if nombre_pdf and os.path.exists(nombre_pdf):
                     os.remove(nombre_pdf)
                 if nombre_img_temporal and os.path.exists(nombre_img_temporal):
                     os.remove(nombre_img_temporal)
-                # -----------------------------------------------------
                 user_states.pop(chat_id, None)
                 
         elif text in ["3", "editar"]:
@@ -234,7 +239,6 @@ async def telegram_webhook(request: Request):
 
 @app.on_event("shutdown")
 def aviso_de_hibernacion():
-    # Si nadie estaba a mitad de un trámite, Toribio se duerme en silencio sin molestar a nadie.
     if not user_states:
         return 
 
@@ -246,7 +250,6 @@ def aviso_de_hibernacion():
         "desperezarme bien antes de responderte. ¡Nos vemos lueguito!"
     )
     
-    # Toribio le avisa automáticamente a los usuarios que dejó "en espera"
     for chat_id in list(user_states.keys()):
         try:
             requests.post(
