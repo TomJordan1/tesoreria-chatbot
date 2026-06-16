@@ -28,44 +28,21 @@ def generar_comprobante_pdf(datos: dict, ruta_salida: str, ruta_imagen: str = No
     pdf = FPDF()
     pdf.add_page()
     
-    # --- CARGA DE LA FUENTE ARIAL REAL ---
-    archivos_fuente_existen = (
-        os.path.exists("arial.ttf") and 
-        os.path.exists("arialbd.ttf") and 
-        os.path.exists("ariali.ttf")
-    )
-    
-    if archivos_fuente_existen:
-        pdf.add_font("Arial", "", "arial.ttf")      
-        pdf.add_font("Arial", "B", "arialbd.ttf")   
-        pdf.add_font("Arial", "I", "ariali.ttf")    
-        pdf.set_font("Arial", size=11)
-    else:
-        print("🐂⚠️ Aviso de Toribio: No encontré los archivos .ttf de Arial. Usaré Helvetica temporalmente.")
-        pdf.set_font("helvetica", size=11)
+
+    pdf.set_font("helvetica", size=11)
         
     pdf.write_html(html_texto)
-    
-    # --- NUEVA LÓGICA: SEGUNDA PÁGINA PARA LA FOTO ---
+
     if ruta_imagen and os.path.exists(ruta_imagen):
         pdf.add_page()
         
-        # Título centrado para la evidencia (si lo habías quitado, puedes borrar estas líneas)
-        if archivos_fuente_existen:
-            pdf.set_font("Arial", style="B", size=14)
-        else:
-            pdf.set_font("helvetica", style="B", size=14)
+        pdf.set_font("helvetica", style="B", size=14)
             
         try:
-            # ¡AQUÍ ESTÁ LA MAGIA! 
-            # Agregamos 'y=20' para anclar la imagen arriba y evitar el salto de página automático.
             pdf.image(ruta_imagen, x=45, y=20, w=120)
         except Exception as e:
             print(f"Error al estampar la imagen con mis pezuñas: {e}")
-            if archivos_fuente_existen:
-                pdf.set_font("Arial", style="I", size=11)
-            else:
-                pdf.set_font("helvetica", style="I", size=11)
+            pdf.set_font("helvetica", style="I", size=11)
             pdf.cell(0, 10, "Ocurrió un error al cargar la imagen original.", ln=True, align="C")
             
     pdf.output(ruta_salida)
