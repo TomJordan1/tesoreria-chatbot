@@ -195,7 +195,7 @@ async def telegram_webhook(request: Request):
 
             except Exception as e:
                 traceback.print_exc()
-                enviar_mensaje(chat_id, "¡Ay, qué torito tan despistado soy! Ocurrió un problema tratando de anotar esto en el Excel.")
+                enviar_mensaje(chat_id, "¡Ay, qué torito tan despistado soy! Ocurrió un problema tratando de anotar esto en el Excel. Habla con el área de TIC.")
             finally:
                 # --- LÓGICA AGREGADA: LIMPIEZA DE ARCHIVOS CREADOS ---
                 if nombre_pdf and os.path.exists(nombre_pdf):
