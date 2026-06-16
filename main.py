@@ -1,7 +1,7 @@
 import os
 import requests
 import traceback
-from fastapi import FastAPI, Request, BackgroundTasks
+from fastapi import FastAPI, Request
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -23,7 +23,7 @@ def home():
     return {"status": "Servidor funcionando correctamente"}
 
 def enviar_mensaje(chat_id, texto):
-    requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={"chat_id": chat_id, "text": texto, "parse_mode": "Markdown"})
+    requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={"chat_id": chat_id, "text": texto, "parse_mode": "HTML"})
 
 def mostrar_resumen_y_opciones(chat_id):
     """Muestra el resumen final con la opción de editar restaurada."""
@@ -31,16 +31,16 @@ def mostrar_resumen_y_opciones(chat_id):
     if not state: return
     d = state["datos_procesados"]
     resumen = (
-        f"🧾 **¡Acabé de revisarlo! Aquí tienes el resumen:**\n\n"
-        f"📅 **Fecha:** {d.get('fecha')}\n"
-        f"🏷️ **Concepto:** {d.get('concepto')}\n"
-        f"🔄 **Tipo:** {d.get('tipo')} ({d.get('ing_eg')})\n"
-        f"📌 **Motivo:** {d.get('motivo')}\n"
-        f"👤 **Acreedor:** {d.get('acreedor')}\n"
-        f"👤 **Deudor:** {d.get('deudor')}\n"
-        f"🏢 **Proveedor:** {d.get('proveedor')} (RUC: {d.get('ruc')})\n"
-        f"⚖️ **Estado:** {d.get('estado')}\n"
-        f"💰 **Monto:** S/ {d.get('monto')}\n\n"
+        f"🧾 <b>¡Acabé de revisarlo! Aquí tienes el resumen:</b>\n\n"
+        f"📅 <b>Fecha:</b> {d.get('fecha')}\n"
+        f"🏷️ <b>Concepto:</b> {d.get('concepto')}\n"
+        f"🔄 <b>Tipo:</b> {d.get('tipo')} ({d.get('ing_eg')})\n"
+        f"📌 <b>Motivo:</b> {d.get('motivo')}\n"
+        f"👤 <b>Acreedor:</b> {d.get('acreedor')}\n"
+        f"👤 <b>Deudor:</b> {d.get('deudor')}\n"
+        f"🏢 <b>Proveedor:</b> {d.get('proveedor')} (RUC: {d.get('ruc')})\n"
+        f"⚖️ <b>Estado:</b> {d.get('estado')}\n"
+        f"💰 <b>Monto:</b> S/ {d.get('monto')}\n\n"
         f"¿Qué te parece? ¿Lo guardamos en mi registro?\n"
         f"1) Sí, guardar en la base de datos\n"
         f"2) Guardar y generarme un PDF\n"
@@ -83,7 +83,7 @@ def procesar_imagen_y_confirmar(chat_id):
         user_states.pop(chat_id, None)
 
 @app.post("/webhook")
-async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
+async def telegram_webhook(request: Request):
     data = await request.json()
     if "message" not in data: return {"status": "ok"}
 
@@ -108,11 +108,11 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
 
         if user_states[chat_id]["caption"]:
             user_states[chat_id]["contexto_texto"] = user_states[chat_id]["caption"]
-            # SE DELEGA AL SEGUNDO PLANO
-            background_tasks.add_task(procesar_imagen_y_confirmar, chat_id)
+            user_states[chat_id]["step"] = "esperar_lectura"
+            enviar_mensaje(chat_id, "🐂 ¡Muuu! Recibí la foto y tu explicación al mismo tiempo.\n\nPara que no me atragante procesando todo de golpe, escribe <b>'1'</b> (o la palabra que quieras) para empezar a leerlo con mis ojitos y mostrarte el resumen.")
         else:
             user_states[chat_id]["step"] = "elegir_metodo"
-            enviar_mensaje(chat_id, "¡Recibido! Tengo la fotito en mis pezuñas. ¿Cómo me cuentas el resto de los detalles?\n\n✍️ Escribe **'manual'** para que te pregunte paso a paso.\n🗣️ O si prefieres, escríbeme **toda la historia junta aquí** (ej. 'Es una compra para integración, acreedor Proyecta, deudor el museo').")
+            enviar_mensaje(chat_id, "¡Recibido! Tengo la fotito en mis pezuñas. ¿Cómo me cuentas el resto de los detalles?\n\n✍️ Escribe <b>'manual'</b> para que te pregunte paso a paso.\n🗣️ O si prefieres, escríbeme <b>toda la historia junta aquí</b>.")
         return {"status": "ok"}
 
     # --- 2. MANEJO DE TEXTO ---
@@ -133,23 +133,27 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
             state["saldo_previo"] = float(text.replace(",", ""))
             if state["caption"]:
                 state["contexto_texto"] = state["caption"]
-                # SE DELEGA AL SEGUNDO PLANO
-                background_tasks.add_task(procesar_imagen_y_confirmar, chat_id)
+                state["step"] = "esperar_lectura"
+                enviar_mensaje(chat_id, "¡Excelente! He guardado nuestro saldo inicial.\n\n🐂 ¡Muuu! Para que no me atragante procesando todo de golpe, escribe <b>'1'</b> para empezar a leer el recibo con mis ojitos y mostrarte el resumen.")
             else:
                 state["step"] = "elegir_metodo"
-                enviar_mensaje(chat_id, f"¡Excelente! He guardado nuestro saldo inicial en mi libreta.\n\nAhora sí, sobre la foto: ¿cómo completamos los datos que faltan?\n✍️ Escribe **'manual'** o **cuéntamelo todo de golpe aquí**.")
+                enviar_mensaje(chat_id, "¡Excelente! He guardado nuestro saldo inicial en mi libreta.\n\nAhora sí, sobre la foto: ¿cómo completamos los datos que faltan?\n✍️ Escribe <b>'manual'</b> o <b>cuéntamelo todo de golpe aquí</b>.")
         except ValueError:
             enviar_mensaje(chat_id, "¡Muuu! Eso no parece un número de pasto válido. Escríbelo solo con números y punto decimal, por favor (ej. 1500.50).")
+        return {"status": "ok"}
+
+    if state.get("step") == "esperar_lectura":
+        procesar_imagen_y_confirmar(chat_id)
         return {"status": "ok"}
 
     if state.get("step") == "elegir_metodo":
         if text.lower() == "manual":
             state["step"] = "pedir_tipo"
-            enviar_mensaje(chat_id, "**Paso 1 de 4:**\n¿Qué tipo de operación es esta? (ej. Compra, DeudaXCobrar, Deuda Cobrada)")
+            enviar_mensaje(chat_id, "<b>Paso 1 de 4:</b>\n¿Qué tipo de operación es esta? (ej. Compra, DeudaXCobrar, Deuda Cobrada)")
         else:
             state["contexto_texto"] = text
-            # SE DELEGA AL SEGUNDO PLANO
-            background_tasks.add_task(procesar_imagen_y_confirmar, chat_id)
+            state["step"] = "esperar_lectura"
+            enviar_mensaje(chat_id, "¡Anotado! 🐂\nAhora escribe <b>'1'</b> para que empiece a cruzar esta historia con la foto y te arme el resumen.")
         return {"status": "ok"}
 
     if state.get("step") in ["pedir_tipo", "pedir_motivo", "pedir_acreedor", "pedir_deudor"]:
@@ -159,8 +163,8 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         
         if state["step"] == "pedir_deudor":
             state["contexto_manual"]["deudor"] = text
-            # SE DELEGA AL SEGUNDO PLANO
-            background_tasks.add_task(procesar_imagen_y_confirmar, chat_id)
+            state["step"] = "esperar_lectura"
+            enviar_mensaje(chat_id, "¡Anotado! 🐂\nAhora escribe <b>'1'</b> para que empiece a cruzar esta historia con la foto y te arme el resumen.")
         else:
             clave, sig_paso, msj = pasos[state["step"]]
             state["contexto_manual"][clave] = text
