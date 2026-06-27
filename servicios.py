@@ -1,9 +1,8 @@
 import os
 import json
 import base64
+import requests
 from openai import OpenAI
-import gspread
-from google.oauth2.service_account import Credentials
 from datetime import datetime, timezone, timedelta
 
 # --- CONFIGURACIÓN DE GROQ ---
@@ -16,34 +15,28 @@ llm_client = OpenAI(
     base_url="https://api.groq.com/openai/v1"
 )
 
-# --- CONFIGURACIÓN DE GOOGLE SHEETS ---
-SCOPE = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-CREDS_FILE = "cred.json"
-SHEET_NAME = "Gastos"
+# --- WEBHOOK POWER AUTOMATE (SHAREPOINT) ---
+POWER_AUTOMATE_URL = os.getenv("POWER_AUTOMATE_URL")
 
 # Hora de Perú (UTC-5)
 ZONA_HORARIA_PERU = timezone(timedelta(hours=-5))
+ARCHIVO_MEMORIA = "memoria_toribio.json"
 
-def get_sheets_client():
-    creds = Credentials.from_service_account_file(CREDS_FILE, scopes=SCOPE)
-    return gspread.authorize(creds)
+def cargar_memoria():
+    """Carga la caché local para no tener que consultar el Excel de SharePoint cada vez."""
+    if os.path.exists(ARCHIVO_MEMORIA):
+        with open(ARCHIVO_MEMORIA, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"fecha_actual": "", "conteo_dia": 0, "ultimo_saldo": None}
+
+def guardar_memoria(memoria):
+    with open(ARCHIVO_MEMORIA, "w", encoding="utf-8") as f:
+        json.dump(memoria, f, indent=4)
 
 def obtener_saldo_actual():
-    """Lee la última fila de la hoja para obtener el saldo actual. Retorna None si está vacía."""
-    try:
-        sheets_client = get_sheets_client()
-        sheet = sheets_client.open(SHEET_NAME).sheet1
-        todas_las_filas = sheet.get_all_values()
-        
-        if len(todas_las_filas) <= 1:
-            return None
-            
-        # El Saldo es ahora la columna 12 (índice 11)
-        ultimo_saldo_str = todas_las_filas[-1][11].replace(",", "")
-        return float(ultimo_saldo_str)
-    except Exception as e:
-        print(f"Error al obtener el saldo: {e}")
-        return None
+    """Retorna el último saldo registrado en la memoria local."""
+    memoria = cargar_memoria()
+    return memoria.get("ultimo_saldo")
 
 def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
     imagen_base64 = base64.b64encode(image_bytes).decode('utf-8')
@@ -88,8 +81,8 @@ def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
         print(f"Error en LLM: {e}")
         return {"error": True}
 
-def calcular_codigo_y_nro(fecha_str: str, todas_las_filas: list) -> tuple:
-    """Calcula el autoincremental del día y arma el Código."""
+def calcular_codigo_y_nro(fecha_str: str) -> tuple:
+    """Calcula el autoincremental del día usando la memoria local."""
     meses_letras = ["E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"]
     try:
         dia, mes, anio = fecha_str.split("/")
@@ -101,23 +94,24 @@ def calcular_codigo_y_nro(fecha_str: str, todas_las_filas: list) -> tuple:
         fecha_ddmmyy = ahora.strftime("%d%m%y")
         fecha_str = ahora.strftime("%d/%m/%Y")
 
-    # Contar cuántas filas existen con la MISMA fecha (La fecha está en el índice 1)
-    nro_operacion_dia = 1
-    for fila in todas_las_filas[1:]:
-        if len(fila) > 1 and fila[1] == fecha_str:
-            nro_operacion_dia += 1
-            
-    nro_str = f"{nro_operacion_dia:02d}" # Padding (ej. 01)
+    memoria = cargar_memoria()
+    
+    if memoria.get("fecha_actual") == fecha_str:
+        nro_operacion_dia = memoria.get("conteo_dia", 0) + 1
+    else:
+        nro_operacion_dia = 1
+        
+    nro_str = f"{nro_operacion_dia:02d}" 
     codigo = f"{letra_mes}{fecha_ddmmyy}{nro_str}"
     
     return codigo, nro_operacion_dia
 
 def guardar_en_sheets(datos: dict, saldo_previo: float) -> dict:
-    sheets_client = get_sheets_client()
-    sheet = sheets_client.open(SHEET_NAME).sheet1
-    
-    todas_las_filas = sheet.get_all_values()
-    codigo, nro_operacion_dia = calcular_codigo_y_nro(datos["fecha"], todas_las_filas)
+    """
+    El nombre de la función se mantiene para no romper main.py, 
+    pero ahora dispara los datos hacia Microsoft SharePoint.
+    """
+    codigo, nro_operacion_dia = calcular_codigo_y_nro(datos["fecha"])
     
     try:
         monto_float = float(datos["monto"])
@@ -136,7 +130,6 @@ def guardar_en_sheets(datos: dict, saldo_previo: float) -> dict:
 
     fecha_registro = datetime.now(ZONA_HORARIA_PERU).strftime("%d/%m/%Y %H:%M:%S")
 
-    # Guardar en diccionario para pasar al PDF
     datos["codigo"] = codigo
     datos["nro_operacion_dia"] = str(nro_operacion_dia)
     datos["ingreso_final"] = ingreso_val
@@ -144,24 +137,34 @@ def guardar_en_sheets(datos: dict, saldo_previo: float) -> dict:
     datos["saldo"] = f"{nuevo_saldo:.2f}"
     datos["fecha_registro"] = fecha_registro
 
-    # Estructura estricta de 15 columnas
-    fila = [
-        codigo,                             # 1
-        datos["fecha"],                     # 2
-        nro_operacion_dia,                  # 3
-        datos["concepto"],                  # 4
-        datos["tipo"],                      # 5
-        datos["motivo"],                    # 6
-        datos["acreedor"],                  # 7
-        datos["deudor"],                    # 8
-        datos["estado"],                    # 9
-        ingreso_val,                        # 10
-        egreso_val,                         # 11
-        f"{nuevo_saldo:.2f}",               # 12
-        datos.get("ruc", "No Aplica"),      # 13
-        datos.get("proveedor", "No Aplica"),# 14
-        fecha_registro                      # 15
-    ]
+    # El JSON exacto que Power Automate está esperando
+    payload = {
+        "codigo": codigo,
+        "fecha": datos["fecha"],
+        "nro_operacion_dia": str(nro_operacion_dia),
+        "concepto": datos["concepto"],
+        "tipo": datos["tipo"],
+        "motivo": datos["motivo"],
+        "acreedor": datos["acreedor"],
+        "deudor": datos["deudor"],
+        "estado": datos["estado"],
+        "ingreso_final": ingreso_val,
+        "egreso_final": egreso_val,
+        "saldo": f"{nuevo_saldo:.2f}",
+        "ruc": datos.get("ruc", "No Aplica"),
+        "proveedor": datos.get("proveedor", "No Aplica"),
+        "fecha_registro": fecha_registro
+    }
     
-    sheet.append_row(fila)
+    # Inyectar los datos a SharePoint
+    response = requests.post(POWER_AUTOMATE_URL, json=payload)
+    response.raise_for_status() 
+    
+    # Actualizar la memoria local si el guardado fue exitoso
+    memoria = cargar_memoria()
+    memoria["fecha_actual"] = datos["fecha"]
+    memoria["conteo_dia"] = nro_operacion_dia
+    memoria["ultimo_saldo"] = nuevo_saldo
+    guardar_memoria(memoria)
+    
     return datos
