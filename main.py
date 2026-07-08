@@ -38,7 +38,6 @@ def mostrar_resumen_y_opciones(chat_id):
         f"📌 <b>Motivo:</b> {d.get('motivo')}\n"
         f"👤 <b>Acreedor:</b> {d.get('acreedor')}\n"
         f"👤 <b>Deudor:</b> {d.get('deudor')}\n"
-        f"🏢 <b>Proveedor:</b> {d.get('proveedor')} (RUC: {d.get('ruc')})\n"
         f"⚖️ <b>Estado:</b> {d.get('estado')}\n"
         f"💰 <b>Monto:</b> S/ {d.get('monto')}\n\n"
         f"¿Qué te parece? ¿Lo guardamos en mi registro?\n"
@@ -218,8 +217,8 @@ async def telegram_webhook(request: Request):
             state["step"] = "editar"
             respuesta = (
                 "✏️ **Modo edición manual (Mantén las '?' como separador, por favor):**\n\n"
-                "`Fecha ? Concepto ? Tipo ? Ing/Eg ? Motivo ? Acreedor ? Deudor ? Estado ? Monto ? RUC ? Proveedor`\n\n"
-                "*Copia y corrige este ejemplo:* \n`19/10/2025 ? Pago Hosting ? Compra ? Egreso ? Página Web ? No Aplica ? No Aplica ? Pagado ? 46.00 ? No Aplica ? Namecheap`"
+                "`Fecha ? Concepto ? Tipo ? Ing/Eg ? Motivo ? Acreedor ? Deudor ? Estado ? Monto`\n\n"
+                "*Copia y corrige este ejemplo:* \n`19/10/2025 ? Pago Hosting ? Compra ? Egreso ? Página Web ? No Aplica ? No Aplica ? Pagado ? 46.00`"
             )
             enviar_mensaje(chat_id, respuesta)
         else:
@@ -229,12 +228,12 @@ async def telegram_webhook(request: Request):
     # Procesar datos editados
     if state.get("step") == "editar":
         partes = [p.strip() for p in text.split("?")]
-        if len(partes) != 11 or not all(partes):
-            enviar_mensaje(chat_id, "¡Ups! Te comiste un poco de pasto. Asegúrate de incluir todos los 11 campos separados por el símbolo '?'.")
+        if len(partes) != 9 or not all(partes):
+            enviar_mensaje(chat_id, "¡Ups! Te comiste un poco de pasto. Asegúrate de incluir todos los 9 campos separados por el símbolo '?'.")
             return {"status": "ok"}
 
         d = state["datos_procesados"]
-        d["fecha"], d["concepto"], d["tipo"], d["ing_eg"], d["motivo"], d["acreedor"], d["deudor"], d["estado"], d["monto"], d["ruc"], d["proveedor"] = partes
+        d["fecha"], d["concepto"], d["tipo"], d["ing_eg"], d["motivo"], d["acreedor"], d["deudor"], d["estado"], d["monto"] = partes
         
         state["step"] = "confirmar"
         enviar_mensaje(chat_id, "¡Muuu! Datos masticados y corregidos.")

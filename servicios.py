@@ -55,9 +55,7 @@ def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
         "acreedor": "Quién es el acreedor (o 'No Aplica')",
         "deudor": "Quién es el deudor (o 'No Aplica')",
         "estado": "Estado del pago (ej. 'Pagado', 'Pendiente')",
-        "monto": "Monto total (solo el número con dos decimales)",
-        "ruc": "Número de RUC (11 dígitos, o 'No Aplica')",
-        "proveedor": "Nombre del proveedor o persona (o 'No Aplica')"
+        "monto": "Monto total (solo el número con dos decimales)"
     }}
     Devuelve ÚNICAMENTE el objeto JSON.
     """
@@ -128,14 +126,11 @@ def guardar_en_sheets(datos: dict, saldo_previo: float) -> dict:
         egreso_val = f"{monto_float:.2f}"
         nuevo_saldo = saldo_previo - monto_float
 
-    fecha_registro = datetime.now(ZONA_HORARIA_PERU).strftime("%d/%m/%Y %H:%M:%S")
-
     datos["codigo"] = codigo
     datos["nro_operacion_dia"] = str(nro_operacion_dia)
     datos["ingreso_final"] = ingreso_val
     datos["egreso_final"] = egreso_val
     datos["saldo"] = f"{nuevo_saldo:.2f}"
-    datos["fecha_registro"] = fecha_registro
 
     # El JSON exacto que Power Automate está esperando
     payload = {
@@ -144,16 +139,14 @@ def guardar_en_sheets(datos: dict, saldo_previo: float) -> dict:
         "nro_operacion_dia": str(nro_operacion_dia),
         "concepto": datos["concepto"],
         "tipo": datos["tipo"],
+        "ing_eg": datos["ing_eg"],
         "motivo": datos["motivo"],
         "acreedor": datos["acreedor"],
         "deudor": datos["deudor"],
         "estado": datos["estado"],
         "ingreso_final": ingreso_val,
         "egreso_final": egreso_val,
-        "saldo": f"{nuevo_saldo:.2f}",
-        "ruc": datos.get("ruc", "No Aplica"),
-        "proveedor": datos.get("proveedor", "No Aplica"),
-        "fecha_registro": fecha_registro
+        "saldo": f"{nuevo_saldo:.2f}"
     }
     
     # Inyectar los datos a SharePoint
