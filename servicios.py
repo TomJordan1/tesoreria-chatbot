@@ -4,6 +4,7 @@ import base64
 import requests
 from openai import OpenAI
 from datetime import datetime, timezone, timedelta
+import msal
 
 # --- CONFIGURACIÓN DE GROQ ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -15,28 +16,75 @@ llm_client = OpenAI(
     base_url="https://api.groq.com/openai/v1"
 )
 
-# --- WEBHOOK POWER AUTOMATE (SHAREPOINT) ---
-POWER_AUTOMATE_URL = os.getenv("POWER_AUTOMATE_URL")
+# --- CONFIGURACIÓN DE MICROSOFT GRAPH ---
+MS_TENANT_ID = os.getenv("MS_TENANT_ID")
+MS_CLIENT_ID = os.getenv("MS_CLIENT_ID")
+MS_CLIENT_SECRET = os.getenv("MS_CLIENT_SECRET")
+MS_SITE_ID = os.getenv("MS_SITE_ID")
+MS_DRIVE_ID = os.getenv("MS_DRIVE_ID")
+MS_ITEM_ID = os.getenv("MS_ITEM_ID")
+MS_TABLE_NAME = os.getenv("MS_TABLE_NAME", "TablaFinanzas")
 
 # Hora de Perú (UTC-5)
 ZONA_HORARIA_PERU = timezone(timedelta(hours=-5))
-ARCHIVO_MEMORIA = "memoria_toribio.json"
 
-def cargar_memoria():
-    """Carga la caché local para no tener que consultar el Excel de SharePoint cada vez."""
-    if os.path.exists(ARCHIVO_MEMORIA):
-        with open(ARCHIVO_MEMORIA, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {"fecha_actual": "", "conteo_dia": 0, "ultimo_saldo": None}
-
-def guardar_memoria(memoria):
-    with open(ARCHIVO_MEMORIA, "w", encoding="utf-8") as f:
-        json.dump(memoria, f, indent=4)
+def obtener_token_ms():
+    """Obtiene un token OAuth2 para Microsoft Graph API usando Client Credentials."""
+    if not all([MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET]):
+        print("Faltan credenciales de Microsoft Graph en .env")
+        return None
+        
+    authority = f"https://login.microsoftonline.com/{MS_TENANT_ID}"
+    app = msal.ConfidentialClientApplication(
+        MS_CLIENT_ID,
+        authority=authority,
+        client_credential=MS_CLIENT_SECRET
+    )
+    result = app.acquire_token_silent(["https://graph.microsoft.com/.default"], account=None)
+    if not result:
+        result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
+    
+    if "access_token" in result:
+        return result["access_token"]
+    else:
+        print(f"Error obteniendo token: {result.get('error')}")
+        return None
 
 def obtener_saldo_actual():
-    """Retorna el último saldo registrado en la memoria local."""
-    memoria = cargar_memoria()
-    return memoria.get("ultimo_saldo")
+    """Consulta la última fila de la tabla en Excel para obtener el último saldo."""
+    token = obtener_token_ms()
+    if not token:
+        return None
+        
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json"
+    }
+    
+    # Obtener las filas de la tabla
+    url = f"https://graph.microsoft.com/v1.0/sites/{MS_SITE_ID}/drives/{MS_DRIVE_ID}/items/{MS_ITEM_ID}/workbook/tables/{MS_TABLE_NAME}/rows"
+    
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            print(f"Error consultando Excel: {response.text}")
+            return None
+            
+        data = response.json()
+        filas = data.get("value", [])
+        
+        if not filas:
+            return None # Tabla vacía
+            
+        # La última fila insertada
+        ultima_fila = filas[-1]["values"][0] # values es una lista de listas
+        
+        # Asumimos el orden de las columnas: la columna de Saldo es la índice 12 (columna M)
+        ultimo_saldo = float(ultima_fila[12])
+        return ultimo_saldo
+    except Exception as e:
+        print(f"Excepción obteniendo saldo actual: {e}")
+        return None
 
 def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
     imagen_base64 = base64.b64encode(image_bytes).decode('utf-8')
@@ -80,7 +128,7 @@ def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
         return {"error": True}
 
 def calcular_codigo_y_nro(fecha_str: str) -> tuple:
-    """Calcula el autoincremental del día usando la memoria local."""
+    """Calcula el autoincremental del día consultando las filas de Excel."""
     meses_letras = ["E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"]
     try:
         dia, mes, anio = fecha_str.split("/")
@@ -92,23 +140,38 @@ def calcular_codigo_y_nro(fecha_str: str) -> tuple:
         fecha_ddmmyy = ahora.strftime("%d%m%y")
         fecha_str = ahora.strftime("%d/%m/%Y")
 
-    memoria = cargar_memoria()
+    token = obtener_token_ms()
+    nro_operacion_dia = 1
     
-    if memoria.get("fecha_actual") == fecha_str:
-        nro_operacion_dia = memoria.get("conteo_dia", 0) + 1
-    else:
-        nro_operacion_dia = 1
-        
+    if token:
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+        url = f"https://graph.microsoft.com/v1.0/sites/{MS_SITE_ID}/drives/{MS_DRIVE_ID}/items/{MS_ITEM_ID}/workbook/tables/{MS_TABLE_NAME}/rows"
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                filas = response.json().get("value", [])
+                conteo_hoy = 0
+                for fila in filas:
+                    valores = fila.get("values", [[]])[0]
+                    # Indice 1 es fecha, indice 2 es nro_operacion
+                    if len(valores) > 2 and valores[1] == fecha_str:
+                        try:
+                            nro = int(valores[2])
+                            if nro > conteo_hoy:
+                                conteo_hoy = nro
+                        except:
+                            pass
+                nro_operacion_dia = conteo_hoy + 1
+        except Exception as e:
+            print(f"Error calculando autoincremental: {e}")
+
     nro_str = f"{nro_operacion_dia:02d}" 
     codigo = f"{letra_mes}{fecha_ddmmyy}{nro_str}"
     
     return codigo, nro_operacion_dia
 
 def guardar_en_sheets(datos: dict, saldo_previo: float) -> dict:
-    """
-    El nombre de la función se mantiene para no romper main.py, 
-    pero ahora dispara los datos hacia Microsoft SharePoint.
-    """
+    """Guarda directamente en el Excel de SharePoint usando Graph API."""
     codigo, nro_operacion_dia = calcular_codigo_y_nro(datos["fecha"])
     
     try:
@@ -132,32 +195,38 @@ def guardar_en_sheets(datos: dict, saldo_previo: float) -> dict:
     datos["egreso_final"] = egreso_val
     datos["saldo"] = f"{nuevo_saldo:.2f}"
 
-    # El JSON exacto que Power Automate está esperando
-    payload = {
-        "codigo": codigo,
-        "fecha": datos["fecha"],
-        "nro_operacion_dia": str(nro_operacion_dia),
-        "concepto": datos["concepto"],
-        "tipo": datos["tipo"],
-        "ing_eg": datos["ing_eg"],
-        "motivo": datos["motivo"],
-        "acreedor": datos["acreedor"],
-        "deudor": datos["deudor"],
-        "estado": datos["estado"],
-        "ingreso_final": ingreso_val,
-        "egreso_final": egreso_val,
-        "saldo": f"{nuevo_saldo:.2f}"
+    fila_nueva = [
+        codigo,
+        datos["fecha"],
+        str(nro_operacion_dia),
+        datos["concepto"],
+        datos["tipo"],
+        datos["ing_eg"],
+        datos["motivo"],
+        datos["acreedor"],
+        datos["deudor"],
+        datos["estado"],
+        ingreso_val,
+        egreso_val,
+        f"{nuevo_saldo:.2f}"
+    ]
+    
+    token = obtener_token_ms()
+    if not token:
+        raise Exception("Falla de autenticación con SharePoint. Faltan credenciales MS Graph.")
+        
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
     }
     
-    # Inyectar los datos a SharePoint
-    response = requests.post(POWER_AUTOMATE_URL, json=payload)
-    response.raise_for_status() 
+    payload = {
+        "values": [fila_nueva]
+    }
     
-    # Actualizar la memoria local si el guardado fue exitoso
-    memoria = cargar_memoria()
-    memoria["fecha_actual"] = datos["fecha"]
-    memoria["conteo_dia"] = nro_operacion_dia
-    memoria["ultimo_saldo"] = nuevo_saldo
-    guardar_memoria(memoria)
+    url = f"https://graph.microsoft.com/v1.0/sites/{MS_SITE_ID}/drives/{MS_DRIVE_ID}/items/{MS_ITEM_ID}/workbook/tables/{MS_TABLE_NAME}/rows/add"
+    
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status() 
     
     return datos

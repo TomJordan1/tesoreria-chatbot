@@ -3,6 +3,5 @@ uvicorn
 python-dotenv
 requests
 openai
-gspread
-google-auth
+msal
 fpdf2
