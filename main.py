@@ -100,7 +100,7 @@ async def telegram_webhook(request: Request):
         saldo_actual = obtener_saldo_actual()
         if saldo_actual is None:
             user_states[chat_id]["step"] = "pedir_saldo_base"
-            enviar_mensaje(chat_id, "¡Hola! 🤔 Veo que mi pastizal está limpiecito y es el primer registro en la base de datos.\nPara poder calcular bien todo, por favor dime, ¿cuál es el **Saldo Base / Inicial** en caja? (ej. 1500.50)")
+            enviar_mensaje(chat_id, "¡Hola! 🤔 Veo que mi pastizal está limpiecito y es el primer registro en la base de datos.\nPara poder calcular bien todo, por favor dime, ¿cuál es el <b>Saldo Base / Inicial</b> en caja? (ej. 1500.50)")
             return {"status": "ok"}
         
         user_states[chat_id]["saldo_previo"] = saldo_actual
@@ -117,7 +117,7 @@ async def telegram_webhook(request: Request):
     # --- 2. MANEJO DE TEXTO ---
     state = user_states.get(chat_id)
     if not state:
-        enviar_mensaje(chat_id, "🟢¡Holiii! Soy Toribio, tu torito verde de confianza. Envíame la foto de tu comprobante o captura para empezar a masticar esos números.\n\n💡 *Tip: Si me pones toda la explicación en la leyenda de la foto, me ahorro el trabajo de preguntarte y vamos más rápido.*")
+        enviar_mensaje(chat_id, "🟢¡Holiii! Soy Toribio, tu torito verde de confianza. Envíame la foto de tu comprobante o captura para empezar a masticar esos números.\n\n💡 <i>Tip: Si me pones toda la explicación en la leyenda de la foto, me ahorro el trabajo de preguntarte y vamos más rápido.</i>")
         return {"status": "ok"}
 
     text = message.get("text", "").strip()
@@ -156,9 +156,9 @@ async def telegram_webhook(request: Request):
         return {"status": "ok"}
 
     if state.get("step") in ["pedir_tipo", "pedir_motivo", "pedir_acreedor", "pedir_deudor"]:
-        pasos = {"pedir_tipo": ("tipo", "pedir_motivo", "**Paso 2 de 4:**\n¿Cuál es el Motivo? (ej. Página Web, Integración)"),
-                 "pedir_motivo": ("motivo", "pedir_acreedor", "**Paso 3 de 4:**\n¿Quién es el Acreedor? (Escribe el nombre o pon 'No Aplica')"),
-                 "pedir_acreedor": ("acreedor", "pedir_deudor", "**Paso 4 de 4:**\nY por último, ¿quién es el Deudor? (Escribe el nombre o 'No Aplica')")}
+        pasos = {"pedir_tipo": ("tipo", "pedir_motivo", "<b>Paso 2 de 4:</b>\n¿Cuál es el Motivo? (ej. Página Web, Integración)"),
+                 "pedir_motivo": ("motivo", "pedir_acreedor", "<b>Paso 3 de 4:</b>\n¿Quién es el Acreedor? (Escribe el nombre o pon 'No Aplica')"),
+                 "pedir_acreedor": ("acreedor", "pedir_deudor", "<b>Paso 4 de 4:</b>\nY por último, ¿quién es el Deudor? (Escribe el nombre o 'No Aplica')")}
         
         if state["step"] == "pedir_deudor":
             state["contexto_manual"]["deudor"] = text
@@ -181,7 +181,7 @@ async def telegram_webhook(request: Request):
                 codigo_asignado = datos_finales["codigo"]
                 
                 if text == "1":
-                    enviar_mensaje(chat_id, f"¡Muuucho éxito! Operación guardada en Sheets bajo el código {codigo_asignado}**.\n📥 ¡Mándame otra fotito para seguir!")
+                    enviar_mensaje(chat_id, f"¡Muuucho éxito! Operación guardada en Sheets bajo el código <b>{codigo_asignado}</b>.\n📥 ¡Mándame otra fotito para seguir!")
                 elif text == "2":
                     enviar_mensaje(chat_id, f"¡Muuu! Operación <b>{codigo_asignado}</b> bien guardadita. Estoy armando tu PDF con mis cuernos...")
                     nombre_pdf = f"comprobante_{codigo_asignado}.pdf"
@@ -216,9 +216,9 @@ async def telegram_webhook(request: Request):
         elif text in ["3", "editar"]:
             state["step"] = "editar"
             respuesta = (
-                "✏️ **Modo edición manual (Mantén las '?' como separador, por favor):**\n\n"
-                "`Fecha ? Concepto ? Tipo ? Ing/Eg ? Motivo ? Acreedor ? Deudor ? Estado ? Monto`\n\n"
-                "*Copia y corrige este ejemplo:* \n`19/10/2025 ? Pago Hosting ? Compra ? Egreso ? Página Web ? No Aplica ? No Aplica ? Pagado ? 46.00`"
+                "✏️ <b>Modo edición manual (Mantén las '?' como separador, por favor):</b>\n\n"
+                "<code>Fecha ? Concepto ? Tipo ? Ing/Eg ? Motivo ? Acreedor ? Deudor ? Estado ? Monto</code>\n\n"
+                "<i>Copia y corrige este ejemplo:</i> \n<code>19/10/2025 ? Pago Hosting ? Compra ? Egreso ? Página Web ? No Aplica ? No Aplica ? Pagado ? 46.00</code>"
             )
             enviar_mensaje(chat_id, respuesta)
         else:
