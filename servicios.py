@@ -186,14 +186,14 @@ def guardar_en_sheets(datos: dict, saldo_previo: float) -> dict:
     except ValueError:
         monto_float = 0.0
 
-    ingreso_val = "-"
-    egreso_val = "-"
+    ingreso_val = 0
+    egreso_val = 0
     
     if datos["ing_eg"].lower() == "ingreso":
-        ingreso_val = f"{monto_float:.2f}"
+        ingreso_val = monto_float
         nuevo_saldo = saldo_previo + monto_float
     else:
-        egreso_val = f"{monto_float:.2f}"
+        egreso_val = monto_float
         nuevo_saldo = saldo_previo - monto_float
 
     datos["codigo"] = codigo
