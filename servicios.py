@@ -208,8 +208,7 @@ def guardar_en_sheets(datos: dict, saldo_previo: float) -> dict:
         datos["deudor"],
         datos["estado"],
         ingreso_val,
-        egreso_val,
-        f"{nuevo_saldo:.2f}"
+        egreso_val
     ]
     
     token = obtener_token_ms()
