@@ -177,7 +177,7 @@ def calcular_codigo_y_nro(fecha_str: str) -> tuple:
     
     return codigo, nro_operacion_dia
 
-def guardar_en_sheets(datos: dict, saldo_previo: float) -> dict:
+def guardar_en_excel(datos: dict, saldo_previo: float) -> dict:
     """Guarda directamente en el Excel de SharePoint usando Graph API."""
     codigo, nro_operacion_dia = calcular_codigo_y_nro(datos["fecha"])
     

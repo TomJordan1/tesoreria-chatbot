@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from servicios import obtener_saldo_actual, extraer_datos_recibo_llm, guardar_en_sheets
+from servicios import obtener_saldo_actual, extraer_datos_recibo_llm, guardar_en_excel
 from generador_pdf import generar_comprobante_pdf
 
 app = FastAPI()
@@ -115,11 +115,6 @@ async def telegram_webhook(request: Request):
         return {"status": "ok"}
 
     # --- 2. MANEJO DE TEXTO ---
-    state = user_states.get(chat_id)
-    if not state:
-        enviar_mensaje(chat_id, "¡Hola! Soy Toribot, tu asistente de tesorería. Envíame la foto de tu comprobante o captura para empezar.\n\n💡 <i>Tip: Si me pones toda la explicación en la leyenda de la foto, vamos más rápido.</i>\n🛑 <i>Tip: Escribe <b>/cancelar</b> en cualquier momento si quieres abortar y empezar de nuevo.</i>\n❓ <i>Tip: Escribe <b>/ayuda</b> para ver mi infografía explicativa.</i>")
-        return {"status": "ok"}
-
     text = message.get("text", "").strip()
 
     if text.lower() == "/cancelar":
@@ -128,7 +123,7 @@ async def telegram_webhook(request: Request):
         return {"status": "ok"}
 
     if text.lower() == "/ayuda":
-        caption = "🤖 <b>Guía Rápida de Toribot</b>\n\nAquí te explico cómo funciono. ¡Por favor abre la imagen para que veas los dos caminos que puedes tomar!\n\n💡 <i>Tip 1: Si me equivoco deduciendo algo en el Modo Exprés, ¡no te preocupes! Siempre te daré la opción de Editar los datos antes de guardarlos definitivamente.</i>\n\n❓ <i>Tip 2: Siempre que te pierdas, puedes escribir /ayuda para volver a ver esto.</i>"
+        caption = "🤖 <b>Guía Rápida de Toribio</b>\n\nAquí te explico cómo funciono. ¡Por favor abre la imagen para que veas los dos caminos que puedes tomar!\n\n💡 <i>Tip 1: Si me equivoco deduciendo algo en el Modo Exprés, ¡no te preocupes! Siempre te daré la opción de Editar los datos antes de guardarlos definitivamente.</i>\n\n❓ <i>Tip 2: Siempre que te pierdas, puedes escribir /ayuda para volver a ver esto.</i>"
         if os.path.exists("infografia.png"):
             with open("infografia.png", "rb") as archivo:
                 requests.post(
@@ -138,6 +133,11 @@ async def telegram_webhook(request: Request):
                 )
         else:
             enviar_mensaje(chat_id, "¡Ups! La infografía no está disponible en este momento.")
+        return {"status": "ok"}
+
+    state = user_states.get(chat_id)
+    if not state:
+        enviar_mensaje(chat_id, "¡Hola! Soy Toribio, tu asistente de tesorería. Envíame la foto de tu comprobante o captura para empezar.\n\n💡 <i>Tip: Si me pones toda la explicación en la leyenda de la foto, vamos más rápido.</i>\n🛑 <i>Tip: Escribe <b>/cancelar</b> en cualquier momento si quieres abortar y empezar de nuevo.</i>\n❓ <i>Tip: Escribe <b>/ayuda</b> para ver mi infografía explicativa.</i>")
         return {"status": "ok"}
 
     if state.get("step") == "pedir_saldo_base":
@@ -190,7 +190,7 @@ async def telegram_webhook(request: Request):
             nombre_pdf = None
             nombre_img_temporal = None
             try:
-                datos_finales = guardar_en_sheets(state["datos_procesados"], state["saldo_previo"])
+                datos_finales = guardar_en_excel(state["datos_procesados"], state["saldo_previo"])
                 codigo_asignado = datos_finales["codigo"]
                 
                 if text == "1":

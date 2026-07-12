@@ -18,7 +18,7 @@ def generar_comprobante_pdf(datos: dict, ruta_salida: str, ruta_imagen: str = No
     campos_requeridos = [
         "codigo", "fecha", "nro_operacion_dia", "concepto", "tipo", 
         "motivo", "acreedor", "deudor", "estado", "ingreso_final", 
-        "egreso_final", "saldo", "ruc", "proveedor", "fecha_registro"
+        "egreso_final", "saldo"
     ]
     
     for campo in campos_requeridos:
