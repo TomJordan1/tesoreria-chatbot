@@ -76,13 +76,19 @@ def obtener_saldo_actual():
         if not filas:
             return None # Tabla vacía
             
-        # La última fila insertada
-        ultima_fila = filas[-1]["values"][0] # values es una lista de listas
-        
-        # Asumimos el orden de las columnas: la columna de Saldo es la índice 12 (columna M)
-        saldo_str = str(ultima_fila[12]).replace(",", "").strip()
-        ultimo_saldo = float(saldo_str)
-        return ultimo_saldo
+        # La tabla puede tener filas vacías pre-asignadas al final. 
+        # Iteramos hacia atrás hasta encontrar un saldo numérico válido.
+        for fila in reversed(filas):
+            valores = fila.get("values", [[]])[0]
+            if len(valores) > 12:
+                saldo_str = str(valores[12]).replace(",", "").strip()
+                if saldo_str and saldo_str != "-" and saldo_str != "":
+                    try:
+                        return float(saldo_str)
+                    except ValueError:
+                        continue
+                        
+        return None # Si llegamos aquí, no había ningún saldo válido
     except Exception as e:
         print(f"Excepción obteniendo saldo actual: {e}")
         return None
