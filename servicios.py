@@ -203,7 +203,7 @@ def guardar_en_sheets(datos: dict, saldo_previo: float) -> dict:
     datos["saldo"] = f"{nuevo_saldo:.2f}"
 
     fila_nueva = [
-        codigo,
+        None,
         datos["fecha"],
         str(nro_operacion_dia),
         datos["concepto"],
