@@ -31,20 +31,20 @@ def mostrar_resumen_y_opciones(chat_id):
     if not state: return
     d = state["datos_procesados"]
     resumen = (
-        f"🧾 <b>¡Acabé de revisarlo! Aquí tienes el resumen:</b>\n\n"
-        f"📅 <b>Fecha:</b> {d.get('fecha')}\n"
-        f"🏷️ <b>Concepto:</b> {d.get('concepto')}\n"
-        f"🔄 <b>Tipo:</b> {d.get('tipo')} ({d.get('ing_eg')})\n"
-        f"📌 <b>Motivo:</b> {d.get('motivo')}\n"
-        f"👤 <b>Acreedor:</b> {d.get('acreedor')}\n"
-        f"👤 <b>Deudor:</b> {d.get('deudor')}\n"
-        f"⚖️ <b>Estado:</b> {d.get('estado')}\n"
-        f"💰 <b>Monto:</b> S/ {d.get('monto')}\n\n"
-        f"¿Qué te parece? ¿Lo guardamos en mi registro?\n"
-        f"1) Sí, guardar en la base de datos\n"
-        f"2) Guardar y generarme un PDF\n"
-        f"3) Editar algunos datos\n"
-        f"O envía /cancelar si nos equivocamos"
+        f"🧾 <b>Resumen de la operación:</b>\n\n"
+        f"<b>Fecha:</b> {d.get('fecha')}\n"
+        f"<b>Concepto:</b> {d.get('concepto')}\n"
+        f"<b>Tipo:</b> {d.get('tipo')} ({d.get('ing_eg')})\n"
+        f"<b>Motivo:</b> {d.get('motivo')}\n"
+        f"<b>Acreedor:</b> {d.get('acreedor')}\n"
+        f"<b>Deudor:</b> {d.get('deudor')}\n"
+        f"<b>Estado:</b> {d.get('estado')}\n"
+        f"<b>Monto:</b> S/ {d.get('monto')}\n\n"
+        f"¿Qué deseas hacer?\n"
+        f"1) Guardar en la base de datos\n"
+        f"2) Guardar y generar PDF\n"
+        f"3) Editar datos\n"
+        f"O envía /cancelar para abortar"
     )
     enviar_mensaje(chat_id, resumen)
 
@@ -54,7 +54,7 @@ def procesar_imagen_y_confirmar(chat_id):
     if not state: 
         return 
         
-    enviar_mensaje(chat_id, "🐂 ¡Muuu! Estoy mirando tu comprobante con mis ojitos de torito y cruzándolo con lo que me contaste. Dame un segundito...")
+    enviar_mensaje(chat_id, "Procesando el comprobante y cruzando la información. Dame un segundo...")
     
     try:
         file_info = requests.get(f"{TELEGRAM_API_URL}/getFile?file_id={state['file_id']}").json()
@@ -73,12 +73,12 @@ def procesar_imagen_y_confirmar(chat_id):
             state["datos_procesados"] = datos_ia
             mostrar_resumen_y_opciones(chat_id)
         else:
-            enviar_mensaje(chat_id, "🐂 ¡Uy! Mis pezuñas resbalaron y no pude leer bien la imagen. ¿Podemos intentarlo de nuevo?")
+            enviar_mensaje(chat_id, "No pude leer bien la imagen. Por favor, intenta enviarla de nuevo.")
             user_states.pop(chat_id, None)
 
     except Exception as e:
         traceback.print_exc()
-        enviar_mensaje(chat_id, "🐂 ¡Muuu! Me enredé un poco con los cables del prado. Ocurrió un problemita interno.")
+        enviar_mensaje(chat_id, "Ocurrió un error interno procesando la imagen. Por favor, intenta de nuevo.")
         user_states.pop(chat_id, None)
 
 @app.post("/webhook")
@@ -100,7 +100,7 @@ async def telegram_webhook(request: Request):
         saldo_actual = obtener_saldo_actual()
         if saldo_actual is None:
             user_states[chat_id]["step"] = "pedir_saldo_base"
-            enviar_mensaje(chat_id, "¡Hola! 🤔 Veo que mi pastizal está limpiecito y es el primer registro en la base de datos.\nPara poder calcular bien todo, por favor dime, ¿cuál es el <b>Saldo Base / Inicial</b> en caja? (ej. 1500.50)")
+            enviar_mensaje(chat_id, "¡Hola! Veo que es el primer registro en la base de datos.\nPara calcular los saldos correctamente, por favor dime: ¿cuál es el <b>Saldo Base / Inicial</b> en caja? (ej. 1500.50)")
             return {"status": "ok"}
         
         user_states[chat_id]["saldo_previo"] = saldo_actual
@@ -108,23 +108,23 @@ async def telegram_webhook(request: Request):
         if user_states[chat_id]["caption"]:
             user_states[chat_id]["contexto_texto"] = user_states[chat_id]["caption"]
             user_states[chat_id]["step"] = "esperar_lectura"
-            enviar_mensaje(chat_id, "🐂 ¡Muuu! Recibí la foto y tu explicación al mismo tiempo.\n\nPara que no me atragante procesando todo de golpe, escribe <b>'1'</b> (o la palabra que quieras) para empezar a leerlo con mis ojitos y mostrarte el resumen.")
+            enviar_mensaje(chat_id, "Recibí la foto y tu explicación.\n\nEscribe <b>'1'</b> para empezar a procesar los datos y mostrarte el resumen.")
         else:
             user_states[chat_id]["step"] = "elegir_metodo"
-            enviar_mensaje(chat_id, "¡Recibido! Tengo la fotito en mis pezuñas. ¿Cómo me cuentas el resto de los detalles?\n\n✍️ Escribe <b>'manual'</b> para que te pregunte paso a paso.\n🗣️ O si prefieres, escríbeme <b>toda la historia junta aquí</b>.")
+            enviar_mensaje(chat_id, "¡Recibido! ¿Cómo me cuentas el resto de los detalles?\n\n✍️ Escribe <b>'manual'</b> para que te pregunte paso a paso.\n🗣️ O si prefieres, escríbeme <b>toda la historia junta aquí</b>.")
         return {"status": "ok"}
 
     # --- 2. MANEJO DE TEXTO ---
     state = user_states.get(chat_id)
     if not state:
-        enviar_mensaje(chat_id, "🟢¡Holiii! Soy Toribio, tu torito verde de confianza. Envíame la foto de tu comprobante o captura para empezar a masticar esos números.\n\n💡 <i>Tip: Si me pones toda la explicación en la leyenda de la foto, me ahorro el trabajo de preguntarte y vamos más rápido.</i>\n🛑 <i>Tip: Escribe <b>/cancelar</b> en cualquier momento si quieres abortar y empezar de nuevo.</i>")
+        enviar_mensaje(chat_id, "¡Hola! Soy Toribio, tu asistente de tesorería. Envíame la foto de tu comprobante o captura para empezar.\n\n💡 <i>Tip: Si me pones toda la explicación en la leyenda de la foto, vamos más rápido.</i>\n🛑 <i>Tip: Escribe <b>/cancelar</b> en cualquier momento si quieres abortar y empezar de nuevo.</i>")
         return {"status": "ok"}
 
     text = message.get("text", "").strip()
 
     if text.lower() == "/cancelar":
         user_states.pop(chat_id, None)
-        enviar_mensaje(chat_id, "¡Entendido! Tiramos esto al pasto. Envíame otra foto cuando quieras empezar de nuevo.")
+        enviar_mensaje(chat_id, "¡Entendido! Operación cancelada. Envíame otra foto cuando quieras empezar de nuevo.")
         return {"status": "ok"}
 
     if state.get("step") == "pedir_saldo_base":
@@ -133,12 +133,12 @@ async def telegram_webhook(request: Request):
             if state["caption"]:
                 state["contexto_texto"] = state["caption"]
                 state["step"] = "esperar_lectura"
-                enviar_mensaje(chat_id, "¡Excelente! He guardado nuestro saldo inicial.\n\n🐂 ¡Muuu! Para que no me atragante procesando todo de golpe, escribe <b>'1'</b> para empezar a leer el recibo con mis ojitos y mostrarte el resumen.")
+                enviar_mensaje(chat_id, "¡Excelente! He guardado el saldo inicial.\n\nEscribe <b>'1'</b> para empezar a procesar el recibo y mostrarte el resumen.")
             else:
                 state["step"] = "elegir_metodo"
-                enviar_mensaje(chat_id, "¡Excelente! He guardado nuestro saldo inicial en mi libreta.\n\nAhora sí, sobre la foto: ¿cómo completamos los datos que faltan?\n✍️ Escribe <b>'manual'</b> o <b>cuéntamelo todo de golpe aquí</b>.")
+                enviar_mensaje(chat_id, "¡Excelente! He guardado el saldo inicial.\n\nAhora sí, sobre la foto: ¿cómo completamos los datos que faltan?\n✍️ Escribe <b>'manual'</b> o <b>cuéntamelo todo de golpe aquí</b>.")
         except ValueError:
-            enviar_mensaje(chat_id, "¡Muuu! Eso no parece un número de pasto válido. Escríbelo solo con números y punto decimal, por favor (ej. 1500.50).")
+            enviar_mensaje(chat_id, "Ese no parece un monto válido. Escríbelo solo con números y punto decimal, por favor (ej. 1500.50).")
         return {"status": "ok"}
 
     if state.get("step") == "esperar_lectura":
@@ -152,7 +152,7 @@ async def telegram_webhook(request: Request):
         else:
             state["contexto_texto"] = text
             state["step"] = "esperar_lectura"
-            enviar_mensaje(chat_id, "¡Anotado! 🐂\nAhora escribe <b>'1'</b> para que empiece a cruzar esta historia con la foto y te arme el resumen.")
+            enviar_mensaje(chat_id, "¡Anotado!\nAhora escribe <b>'1'</b> para procesar esta historia con la foto y armar el resumen.")
         return {"status": "ok"}
 
     if state.get("step") in ["pedir_tipo", "pedir_motivo", "pedir_acreedor", "pedir_deudor"]:
@@ -163,7 +163,7 @@ async def telegram_webhook(request: Request):
         if state["step"] == "pedir_deudor":
             state["contexto_manual"]["deudor"] = text
             state["step"] = "esperar_lectura"
-            enviar_mensaje(chat_id, "¡Anotado! 🐂\nAhora escribe <b>'1'</b> para que empiece a cruzar esta historia con la foto y te arme el resumen.")
+            enviar_mensaje(chat_id, "¡Anotado!\nAhora escribe <b>'1'</b> para procesar esta historia con la foto y armar el resumen.")
         else:
             clave, sig_paso, msj = pasos[state["step"]]
             state["contexto_manual"][clave] = text
@@ -181,9 +181,9 @@ async def telegram_webhook(request: Request):
                 codigo_asignado = datos_finales["codigo"]
                 
                 if text == "1":
-                    enviar_mensaje(chat_id, f"¡Muuucho éxito! Operación guardada en Sheets bajo el código <b>{codigo_asignado}</b>.\n📥 ¡Mándame otra fotito para seguir!")
+                    enviar_mensaje(chat_id, f"¡Éxito! Operación guardada en Sheets bajo el código <b>{codigo_asignado}</b>.\nEnvíame otra foto para registrar un nuevo movimiento.")
                 elif text == "2":
-                    enviar_mensaje(chat_id, f"¡Muuu! Operación <b>{codigo_asignado}</b> bien guardadita. Estoy armando tu PDF con mis cuernos...")
+                    enviar_mensaje(chat_id, f"Operación <b>{codigo_asignado}</b> guardada. Generando tu PDF...")
                     nombre_pdf = f"comprobante_{codigo_asignado}.pdf"
                     nombre_img_temporal = f"img_temp_{codigo_asignado}.jpg"
                     
@@ -205,7 +205,7 @@ async def telegram_webhook(request: Request):
 
             except Exception as e:
                 traceback.print_exc()
-                enviar_mensaje(chat_id, "¡Ay, qué torito tan despistado soy! Ocurrió un problema tratando de anotar esto en el Excel. Habla con el área de TIC.")
+                enviar_mensaje(chat_id, "Ocurrió un problema tratando de anotar esto en Excel. Por favor, revisa los logs o contacta con soporte.")
             finally:
                 if nombre_pdf and os.path.exists(nombre_pdf):
                     os.remove(nombre_pdf)
@@ -229,14 +229,14 @@ async def telegram_webhook(request: Request):
     if state.get("step") == "editar":
         partes = [p.strip() for p in text.split("?")]
         if len(partes) != 9 or not all(partes):
-            enviar_mensaje(chat_id, "¡Ups! Te comiste un poco de pasto. Asegúrate de incluir todos los 9 campos separados por el símbolo '?'.")
+            enviar_mensaje(chat_id, "¡Ups! Faltan datos. Asegúrate de incluir todos los 9 campos separados por el símbolo '?'.")
             return {"status": "ok"}
 
         d = state["datos_procesados"]
         d["fecha"], d["concepto"], d["tipo"], d["ing_eg"], d["motivo"], d["acreedor"], d["deudor"], d["estado"], d["monto"] = partes
         
         state["step"] = "confirmar"
-        enviar_mensaje(chat_id, "¡Muuu! Datos masticados y corregidos.")
+        enviar_mensaje(chat_id, "Datos actualizados correctamente.")
         mostrar_resumen_y_opciones(chat_id)
         return {"status": "ok"}
 
@@ -246,11 +246,9 @@ def aviso_de_hibernacion():
         return 
 
     mensaje_toribio = (
-        "¡Muuu! 💤\n\n"
-        "El prado se quedó muy calladito y me dio sueñito, así que me voy a tomar una siesta. \n\n"
-        "Como mi memoria es cortita, acabo de olvidar el recibo que estábamos revisando. 🌿 "
-        "Cuando me necesites, vuelve a enviarme la foto, pero dame unos 50 segunditos para "
-        "desperezarme bien antes de responderte. ¡Nos vemos lueguito!"
+        "💤 El servidor ha entrado en modo reposo.\n\n"
+        "He olvidado el recibo actual por seguridad. "
+        "Cuando me necesites, vuelve a enviarme la foto."
     )
     
     for chat_id in list(user_states.keys()):
