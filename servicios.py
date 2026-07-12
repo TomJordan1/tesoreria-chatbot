@@ -80,7 +80,8 @@ def obtener_saldo_actual():
         ultima_fila = filas[-1]["values"][0] # values es una lista de listas
         
         # Asumimos el orden de las columnas: la columna de Saldo es la índice 12 (columna M)
-        ultimo_saldo = float(ultima_fila[12])
+        saldo_str = str(ultima_fila[12]).replace(",", "").strip()
+        ultimo_saldo = float(saldo_str)
         return ultimo_saldo
     except Exception as e:
         print(f"Excepción obteniendo saldo actual: {e}")
