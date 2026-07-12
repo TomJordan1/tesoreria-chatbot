@@ -117,7 +117,7 @@ async def telegram_webhook(request: Request):
     # --- 2. MANEJO DE TEXTO ---
     state = user_states.get(chat_id)
     if not state:
-        enviar_mensaje(chat_id, "🟢¡Holiii! Soy Toribio, tu torito verde de confianza. Envíame la foto de tu comprobante o captura para empezar a masticar esos números.\n\n💡 <i>Tip: Si me pones toda la explicación en la leyenda de la foto, me ahorro el trabajo de preguntarte y vamos más rápido.</i>")
+        enviar_mensaje(chat_id, "🟢¡Holiii! Soy Toribio, tu torito verde de confianza. Envíame la foto de tu comprobante o captura para empezar a masticar esos números.\n\n💡 <i>Tip: Si me pones toda la explicación en la leyenda de la foto, me ahorro el trabajo de preguntarte y vamos más rápido.</i>\n🛑 <i>Tip: Escribe <b>/cancelar</b> en cualquier momento si quieres abortar y empezar de nuevo.</i>")
         return {"status": "ok"}
 
     text = message.get("text", "").strip()
