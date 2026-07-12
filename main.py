@@ -117,7 +117,7 @@ async def telegram_webhook(request: Request):
     # --- 2. MANEJO DE TEXTO ---
     state = user_states.get(chat_id)
     if not state:
-        enviar_mensaje(chat_id, "¡Hola! Soy Toribio, tu asistente de tesorería. Envíame la foto de tu comprobante o captura para empezar.\n\n💡 <i>Tip: Si me pones toda la explicación en la leyenda de la foto, vamos más rápido.</i>\n🛑 <i>Tip: Escribe <b>/cancelar</b> en cualquier momento si quieres abortar y empezar de nuevo.</i>")
+        enviar_mensaje(chat_id, "¡Hola! Soy Toribio, tu asistente de tesorería. Envíame la foto de tu comprobante o captura para empezar.\n\n💡 <i>Tip: Si me pones toda la explicación en la leyenda de la foto, vamos más rápido.</i>\n🛑 <i>Tip: Escribe <b>/cancelar</b> en cualquier momento si quieres abortar y empezar de nuevo.</i>\n❓ <i>Tip: Escribe <b>/ayuda</b> para ver mi infografía explicativa.</i>")
         return {"status": "ok"}
 
     text = message.get("text", "").strip()
@@ -125,6 +125,19 @@ async def telegram_webhook(request: Request):
     if text.lower() == "/cancelar":
         user_states.pop(chat_id, None)
         enviar_mensaje(chat_id, "¡Entendido! Operación cancelada. Envíame otra foto cuando quieras empezar de nuevo.")
+        return {"status": "ok"}
+
+    if text.lower() == "/ayuda":
+        caption = "🤖 <b>Manual de Supervivencia de Toribio</b>\n\nAquí te explico cómo funciono. ¡Por favor abre/descarga la imagen para que veas los dos caminos que puedes tomar!\n\n💡 <i>Tip: Siempre que te pierdas, puedes escribir /ayuda para volver a ver esto.</i>"
+        if os.path.exists("infografia.png"):
+            with open("infografia.png", "rb") as archivo:
+                requests.post(
+                    f"{TELEGRAM_API_URL}/sendPhoto",
+                    data={"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"},
+                    files={"photo": archivo}
+                )
+        else:
+            enviar_mensaje(chat_id, "¡Ups! La infografía no está disponible en este momento.")
         return {"status": "ok"}
 
     if state.get("step") == "pedir_saldo_base":
