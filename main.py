@@ -128,7 +128,7 @@ async def telegram_webhook(request: Request):
         return {"status": "ok"}
 
     if text.lower() == "/ayuda":
-        caption = "🤖 <b>Manual de Supervivencia de Toribio</b>\n\nAquí te explico cómo funciono. ¡Por favor abre/descarga la imagen para que veas los dos caminos que puedes tomar!\n\n💡 <i>Tip: Siempre que te pierdas, puedes escribir /ayuda para volver a ver esto.</i>"
+        caption = "🤖 <b>Guía Rápida de Toribio</b>\n\nAquí te explico cómo funciono. ¡Por favor abre la imagen para que veas los dos caminos que puedes tomar!\n\n💡 <i>Tip 1: Si me equivoco deduciendo algo en el Modo Exprés, ¡no te preocupes! Siempre te daré la opción de Editar los datos antes de guardarlos definitivamente.</i>\n\n❓ <i>Tip 2: Siempre que te pierdas, puedes escribir /ayuda para volver a ver esto.</i>"
         if os.path.exists("infografia.png"):
             with open("infografia.png", "rb") as archivo:
                 requests.post(
