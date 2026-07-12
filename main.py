@@ -108,10 +108,10 @@ async def telegram_webhook(request: Request):
         if user_states[chat_id]["caption"]:
             user_states[chat_id]["contexto_texto"] = user_states[chat_id]["caption"]
             user_states[chat_id]["step"] = "esperar_lectura"
-            enviar_mensaje(chat_id, "Recibí la foto y tu explicación.\n\nEscribe <b>'1'</b> para empezar a procesar los datos y mostrarte el resumen.\n\n❓ <i>Si no entiendes qué está pasando o quieres ver el manual, escribe <b>/ayuda</b></i>")
+            enviar_mensaje(chat_id, "Recibí la foto y tu explicación.\n\nEscribe <b>'1'</b> para empezar a procesar los datos y mostrarte el resumen.\n\n❓ <i>Si no entiendes qué está pasando o quieres ver la guía, escribe <b>/ayuda</b></i>")
         else:
             user_states[chat_id]["step"] = "elegir_metodo"
-            enviar_mensaje(chat_id, "¡Recibido! ¿Cómo me cuentas el resto de los detalles?\n\n✍️ Escribe <b>'manual'</b> para que te pregunte paso a paso.\n🗣️ O si prefieres, escríbeme <b>toda la historia junta aquí</b>.\n\n❓ <i>Si no entiendes qué está pasando o quieres ver el manual, escribe <b>/ayuda</b></i>")
+            enviar_mensaje(chat_id, "¡Recibido! ¿Cómo me cuentas el resto de los detalles?\n\n✍️ Escribe <b>'manual'</b> para que te pregunte paso a paso.\n🗣️ O si prefieres, escríbeme <b>toda la historia junta aquí</b>.\n\n❓ <i>Si no entiendes qué está pasando o quieres ver la guía, escribe <b>/ayuda</b></i>")
         return {"status": "ok"}
 
     # --- 2. MANEJO DE TEXTO ---
@@ -259,9 +259,9 @@ def aviso_de_hibernacion():
         return 
 
     mensaje_toribio = (
-        "💤 El servidor ha entrado en modo reposo.\n\n"
+        "💤 El servidor ha entrado en modo reposo. Aprovecharé en descansar un poquito.\n\n"
         "He olvidado el recibo actual por seguridad. "
-        "Cuando me necesites, vuelve a enviarme la foto."
+        "Cuando me necesites, vuelve a enviarme la foto, pero sé paciente. Necesitaré un momento para desperezarme."
     )
     
     for chat_id in list(user_states.keys()):
