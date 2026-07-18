@@ -54,7 +54,7 @@ def procesar_imagen_y_confirmar(chat_id):
     if not state: 
         return 
         
-    enviar_mensaje(chat_id, "Procesando el comprobante y cruzando la información. Dame un segundo...")
+    enviar_mensaje(chat_id, "Procesando el comprobante y cruzando la información. Dame un segundito...")
     
     try:
         file_info = requests.get(f"{TELEGRAM_API_URL}/getFile?file_id={state['file_id']}").json()
@@ -78,7 +78,7 @@ def procesar_imagen_y_confirmar(chat_id):
 
     except Exception as e:
         traceback.print_exc()
-        enviar_mensaje(chat_id, "Ocurrió un error interno procesando la imagen. Por favor, intenta de nuevo.")
+        enviar_mensaje(chat_id, "Ocurrió un error interno procesando la imagen... o quizás mis lentes están sucios... Por favor, intenta de nuevo mientras los limpio.")
         user_states.pop(chat_id, None)
 
 @app.post("/webhook")
@@ -260,8 +260,8 @@ def aviso_de_hibernacion():
 
     mensaje_toribio = (
         "💤 El servidor ha entrado en modo reposo. Aprovecharé en descansar un poquito.\n\n"
-        "He olvidado el recibo actual por seguridad. "
-        "Cuando me necesites, vuelve a enviarme la foto, pero sé paciente. Necesitaré un momento para desperezarme."
+        "En fin, borrón y cuenta nueva. "
+        "Cuando me necesites, vuelve a enviarme la foto, pero tenme paciencia. Necesitaré un momento para desperezarme 😴."
     )
     
     for chat_id in list(user_states.keys()):
