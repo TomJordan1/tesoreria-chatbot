@@ -194,7 +194,7 @@ async def telegram_webhook(request: Request):
                 codigo_asignado = datos_finales["codigo"]
                 
                 if text == "1":
-                    enviar_mensaje(chat_id, f"¡Éxito! Operación guardada en Excel bajo el código <b>{codigo_asignado}</b>.\nEnvíame otra foto para registrar un nuevo movimiento.")
+                    enviar_mensaje(chat_id, f"¡Muuucho éxito! Operación guardada en Excel bajo el código <b>{codigo_asignado}</b>.\nEnvíame otra foto para registrar un nuevo movimiento.")
                 elif text == "2":
                     enviar_mensaje(chat_id, f"Operación <b>{codigo_asignado}</b> guardada. Generando tu PDF...")
                     nombre_pdf = f"comprobante_{codigo_asignado}.pdf"
@@ -218,7 +218,7 @@ async def telegram_webhook(request: Request):
 
             except Exception as e:
                 traceback.print_exc()
-                enviar_mensaje(chat_id, "Ocurrió un problema tratando de anotar esto en Excel. Por favor, revisa los logs o contacta con soporte.")
+                enviar_mensaje(chat_id, "¡Chispas, tuve un problema tratando de anotar esto en el Excel. Por favor, contacta con el área de TIC para que vean qué rayos sucedió acá.")
             finally:
                 if nombre_pdf and os.path.exists(nombre_pdf):
                     os.remove(nombre_pdf)
