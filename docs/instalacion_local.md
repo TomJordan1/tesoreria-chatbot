@@ -34,24 +34,12 @@ Crea un archivo `.env` en la raíz del proyecto:
 ```env
 TELEGRAM_TOKEN=tu_token_de_telegram
 GROQ_API_KEY=tu_api_key_de_groq
+POWER_AUTOMATE_URL=tu_url_del_webhook_de_power_automate
 ```
 
 ---
 
-### 📄 Paso 4: Configurar Google Sheets
-
-1. Crea un proyecto en Google Cloud Console.
-2. Habilita:
-   - Google Sheets API
-   - Google Drive API
-3. Genera una **Service Account** y descarga el archivo JSON.
-4. Renombra el archivo a `cred.json`.
-5. Coloca `cred.json` en la raíz del proyecto.
-6. Comparte tu Google Sheet con el correo de la Service Account.
-
----
-
-### ▶️ Paso 5: Ejecutar el Servidor Local
+### ▶️ Paso 4: Ejecutar el Servidor Local
 
 ```bash
 uvicorn main:app --reload
@@ -65,7 +53,7 @@ http://127.0.0.1:8000
 
 ---
 
-### 🌐 Paso 6: Exponer el Servidor con Ngrok
+### 🌐 Paso 5: Exponer el Servidor con Ngrok
 
 Telegram no puede conectarse a `localhost`, así que necesitas un túnel público.
 
@@ -83,7 +71,7 @@ https://abcd-1234.ngrok-free.app
 
 ---
 
-### 🔗 Paso 7: Configurar el Webhook de Telegram
+### 🔗 Paso 6: Configurar el Webhook de Telegram
 
 Abre en tu navegador:
 

@@ -34,20 +34,8 @@ Crea un archivo `.env` en la raíz del proyecto:
 ```env
 TELEGRAM_TOKEN=tu_token_de_telegram
 GROQ_API_KEY=tu_api_key_de_groq
+POWER_AUTOMATE_URL=tu_url_del_webhook_de_power_automate
 ```
-
----
-
-### 📄 Paso 4: Configurar Google Sheets
-
-1. Crea un proyecto en Google Cloud Console.
-2. Habilita:
-   - Google Sheets API
-   - Google Drive API
-3. Genera una **Service Account** y descarga el JSON.
-4. Renombra el archivo a `cred.json`.
-5. Coloca `cred.json` en la raíz del proyecto.
-6. Comparte tu hoja de cálculo con el correo de la Service Account.
 
 ---
 
@@ -79,21 +67,12 @@ Agregar en Render:
 ```env
 TELEGRAM_TOKEN=tu_token_de_telegram
 GROQ_API_KEY=tu_api_key_de_groq
+POWER_AUTOMATE_URL=tu_url_del_webhook_de_power_automate
 ```
 
 ---
 
-### 4. Archivo cred.json
-
-Subir `cred.json` usando la sección:
-
-```text
-Secret Files
-```
-
----
-
-### 5. Configurar Webhook de Telegram
+### 4. Configurar Webhook de Telegram
 
 Reemplaza los valores y abre en tu navegador:
 
