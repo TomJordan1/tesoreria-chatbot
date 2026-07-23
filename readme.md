@@ -12,7 +12,7 @@
 
 Este chatbot de tesorería de Telegram, bautizado en un inicio Toribio Bot, diseñado para la gestión y automatización del registro de gastos en tiempo real para proyectos y auditorías internas de grupos estudiantiles. 
 
-El bot recibe fotografías de recibos, boletas o facturas, utiliza un Modelo de Lenguaje Visual (VLM) para comprender e inyectar la información en una base de datos centralizada en SharePoint a través de Power Automate, y ofrece la capacidad opcional de generar al instante un comprobante de validación en PDF procesado 100% de manera local.
+El bot recibe fotografías de recibos, boletas o facturas, utiliza un Modelo de Lenguaje Visual (VLM) para comprender e inyectar la información en una base de datos centralizada en SharePoint a través de Microsoft Graph API, y ofrece la capacidad opcional de generar al instante un comprobante de validación en PDF procesado 100% de manera local.
 
 ## ✨ Características
 * **Procesamiento de Imágenes con IA:** Integración con la API de Groq utilizando el modelo de visión estable `llama-4-scout-17b-16e-instruct` para extraer de forma conceptual campos complejos como RUC, Proveedor, Monto Total, Fecha de Emisión y Categoría.
@@ -25,7 +25,7 @@ El bot recibe fotografías de recibos, boletas o facturas, utiliza un Modelo de 
 * **Core:** Python 3.11+ & FastAPI (servidor web asíncrono gestionado con Uvicorn).
 * **Inteligencia Artificial:** OpenAI SDK (redireccionado a los endpoints de visión de Groq).
 * **Manipulación de PDFs:** `fpdf2` (conversión nativa y ligera de HTML a PDF en local).
-* **Integración de Datos:** Envíos mediante Webhooks a Microsoft Power Automate para registrar en SharePoint.
+* **Integración de Datos:** Conexión nativa a Microsoft Graph API (con `msal`) para registrar en SharePoint de forma directa.
 
 ## 📂 Estructura del repositorio
 ```text

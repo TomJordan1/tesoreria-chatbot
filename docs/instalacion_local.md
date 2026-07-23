@@ -34,7 +34,13 @@ Crea un archivo `.env` en la raíz del proyecto:
 ```env
 TELEGRAM_TOKEN=tu_token_de_telegram
 GROQ_API_KEY=tu_api_key_de_groq
-POWER_AUTOMATE_URL=tu_url_del_webhook_de_power_automate
+MS_TENANT_ID=tu_tenant_id_de_microsoft
+MS_CLIENT_ID=tu_client_id_de_microsoft
+MS_CLIENT_SECRET=tu_client_secret_de_microsoft
+MS_SITE_ID=tu_site_id_de_sharepoint
+MS_DRIVE_ID=tu_drive_id_de_sharepoint
+MS_ITEM_ID=tu_item_id_del_excel
+MS_TABLE_NAME=REGISTRODIARIO3
 ```
 
 ---
