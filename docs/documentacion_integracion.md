@@ -10,14 +10,11 @@ El sistema se compone de cuatro nodos principales que interactúan de forma secu
 3. **Base de Datos (Excel en SharePoint):** Repositorio central de datos (`REGISTRODIARIO3`). El backend de Python se comunica con Excel usando la API de Microsoft Graph para insertar y leer filas.
 4. **Visualización (Power BI):** El modelo semántico alojado en Power BI Service se conecta directamente al archivo de SharePoint mediante una URL web, actualizando los dashboards de forma programada.
 
-> [!WARNING]
-> **Aclaración sobre Integración:** Se identificó que otras partes de la documentación (`readme.md` y guías de instalación) mencionan el uso de webhooks hacia **Power Automate** con la variable `POWER_AUTOMATE_URL`. Sin embargo, la arquitectura real y actual implementada en el código backend (`servicios.py`) realiza una conexión **directa** a Microsoft Graph API (usando `msal` y Client Credentials), ofreciendo una integración más veloz, segura y sin depender de servicios puente como Power Automate.
-
 ---
 
 ## 2. Registro de Cambios y Actualizaciones
 
-A continuación se detallan las modificaciones realizadas respecto a la versión anterior del sistema.
+A continuación se detallan las modificaciones realizadas respecto a la versión anterior del sistema (previo a la versión producción final).
 
 ### 2.1 Backend y Bot de Telegram (Python)
 *   **Manejo de Estados de Sesión:** Se corrigió el orden de evaluación en el bucle principal. Los comandos `/ayuda` y `/cancelar` ahora se procesan antes de validar la existencia de un estado activo, permitiendo su ejecución global en cualquier momento de la conversación.
