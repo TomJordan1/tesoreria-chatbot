@@ -15,7 +15,7 @@ Este chatbot de tesorería de Telegram, bautizado en un inicio Toribio Bot, dise
 El bot recibe fotografías de recibos, boletas o facturas, utiliza un Modelo de Lenguaje Visual (VLM) para comprender e inyectar la información en una base de datos centralizada en SharePoint a través de Microsoft Graph API, y ofrece la capacidad opcional de generar al instante un comprobante de validación en PDF procesado 100% de manera local.
 
 ## ✨ Características
-* **Procesamiento de Imágenes con IA:** Integración con la API de Groq utilizando el modelo de visión estable `llama-4-scout-17b-16e-instruct` para extraer de forma conceptual campos complejos como RUC, Proveedor, Monto Total, Fecha de Emisión y Categoría.
+* **Procesamiento de Imágenes con IA:** Integración con la API de Groq utilizando el modelo de visión estable para extraer de forma conceptual campos complejos como RUC, Proveedor, Monto Total, Fecha de Emisión y Categoría.
 * **Flujo Conversacional Interactivo:** Sistema dinámico que permite al usuario confirmar los datos extraídos, editarlos manualmente en bloque mediante un formato estructurado con signos de interrogación (`?`) o cancelar la operación antes de registrar.
 * **Asignación Correlativa:** Generación automática de un índice incremental (`ID`) en la base de datos para facilitar auditorías de gastos futuros.
 * **Generación Local de PDF Externa:** Compilación asíncrona y ultra-rápida de comprobantes en PDF basada en un archivo de diseño separado (`plantilla.html`) usando la memoria RAM, eliminando dependencias pesadas y cuotas limitadas de almacenamiento en la nube.
