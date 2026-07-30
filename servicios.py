@@ -117,7 +117,7 @@ def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
 
     try:
         response = llm_client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            model="qwen/qwen3.6-27b",
             messages=[
                 {
                     "role": "user",
@@ -220,7 +220,7 @@ def guardar_en_excel(datos: dict, saldo_previo: float) -> dict:
     
     token = obtener_token_ms()
     if not token:
-        raise Exception("Falla de autenticación con SharePoint. Faltan credenciales MS Graph.")
+        raise Exception("Falla de autenticación con SharePoint. Faltan credenciales MS Graph. Habla con el área de TIC.")
         
     headers = {
         "Authorization": f"Bearer {token}",
