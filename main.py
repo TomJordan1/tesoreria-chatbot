@@ -86,7 +86,9 @@ async def telegram_webhook(request: Request):
     data = await request.json()
     if "message" not in data: return {"status": "ok"}
 
-    message = data["message"]
+    if message.get("from", {}).get("is_bot", False):
+        return {"status": "ok"}
+        
     chat_id = str(message["chat"]["id"])
 
     # --- 1. RECEPCIÓN DE IMAGEN ---
