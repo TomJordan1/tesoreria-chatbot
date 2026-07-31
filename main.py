@@ -135,8 +135,7 @@ async def telegram_webhook(request: Request):
         user_states.pop(chat_id, None)
         
         caption = (
-            "🤖 <b>Guía Rápida de Toribot</b>\n\n"
-            "🤖 <b>Guía Rápida de Toribot</b>\n\nAquí te explico cómo funciono. ¡Por favor abre la imagen para que veas los dos caminos que puedes tomar!\n\n💡 <i>Tip 1: Si me equivoco deduciendo algo en el Modo Exprés, ¡no te preocupes! Siempre te daré la opción de Editar los datos antes de guardarlos definitivamente.</i>\n\n❓ <i>Tip 2: Siempre que te pierdas, puedes escribir /ayuda para volver a ver esto.</i>"
+            "🤖 <b>Guía Rápida de Toribot</b>\n\nAquí te explico cómo funciono. ¡Por favor abre la imagen para que veas los dos caminos que puedes tomar!\n\n💡 <i>Tip 1: Si me equivoco deduciendo algo en el Modo Exprés, ¡no te preocupes! Siempre te daré la opción de Editar los datos antes de guardarlos definitivamente.</i>\n\n❓ <i>Tip 2: Siempre que te pierdas, puedes escribir /ayuda para volver a ver esto.</i>\n"
             "💡 <i>Si quieres registrar una operación nueva después de revisar la guía, "
             "envíame nuevamente la foto del comprobante.</i>"
         )
