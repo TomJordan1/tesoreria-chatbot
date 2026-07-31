@@ -87,9 +87,6 @@ async def telegram_webhook(request: Request):
     if "message" not in data: return {"status": "ok"}
 
     message = data["message"]
-    
-    if message.get("from", {}).get("is_bot", False):
-        return {"status": "ok"}
         
     chat_id = str(message["chat"]["id"])
 
@@ -135,16 +132,35 @@ async def telegram_webhook(request: Request):
         return {"status": "ok"}
 
     if text.lower() == "/ayuda":
-        caption = "🤖 <b>Guía Rápida de Toribot</b>\n\nAquí te explico cómo funciono. ¡Por favor abre la imagen para que veas los dos caminos que puedes tomar!\n\n💡 <i>Tip 1: Si me equivoco deduciendo algo en el Modo Exprés, ¡no te preocupes! Siempre te daré la opción de Editar los datos antes de guardarlos definitivamente.</i>\n\n❓ <i>Tip 2: Siempre que te pierdas, puedes escribir /ayuda para volver a ver esto.</i>"
+        user_states.pop(chat_id, None)
+        
+        caption = (
+            "🤖 <b>Guía Rápida de Toribot</b>\n\n"
+            "Aquí te explico cómo funciono. "
+            "¡Por favor abre la imagen para ver los dos caminos disponibles!\n\n"
+            "💡 <i>Si quieres registrar una operación nueva después de revisar la guía, "
+            "envíame nuevamente la foto del comprobante.</i>"
+        )
+    
         if os.path.exists("infografia.png"):
             with open("infografia.png", "rb") as archivo:
                 requests.post(
                     f"{TELEGRAM_API_URL}/sendPhoto",
-                    data={"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"},
-                    files={"photo": archivo}
+                    data={
+                        "chat_id": chat_id,
+                        "caption": caption,
+                        "parse_mode": "HTML"
+                    },
+                    files={
+                        "photo": archivo
+                    }
                 )
         else:
-            enviar_mensaje(chat_id, "¡Ups! La infografía no está disponible en este momento.")
+            enviar_mensaje(
+                chat_id,
+                "¡Ups! La infografía no está disponible en este momento."
+            )
+    
         return {"status": "ok"}
 
     state = user_states.get(chat_id)
