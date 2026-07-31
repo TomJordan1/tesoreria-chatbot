@@ -159,10 +159,13 @@ async def telegram_webhook(request: Request):
         return {"status": "ok"}
 
     if state.get("step") == "esperar_lectura":
-        if text != "1":
+        comandos_validos = ["1", "uno", "si", "sí"]
+        
+        if text.lower() not in comandos_validos:
             enviar_mensaje(
                 chat_id,
-                "Escribe 1 para procesar el comprobante o /ayuda para volver a ver la guía."
+                "Para procesar el comprobante escribe 1.\n"
+                "También puedes usar /ayuda para ver la guía."
             )
             return {"status": "ok"}
     
