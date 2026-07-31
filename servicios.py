@@ -95,6 +95,8 @@ def obtener_saldo_actual():
 
 def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
     imagen_base64 = base64.b64encode(image_bytes).decode('utf-8')
+
+    contexto_seguro = contexto_usuario[:500] if contexto_usuario else "No Aplica"
     
     prompt = f"""
         Eres un sistema de extracción de datos financieros. Tu única tarea es analizar un comprobante de pago y extraer información financiera.
