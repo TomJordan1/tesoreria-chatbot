@@ -95,6 +95,14 @@ async def telegram_webhook(request: Request):
 
     # --- 1. RECEPCIÓN DE IMAGEN ---
     if "photo" in message:
+        if chat_id in user_states:
+            enviar_mensaje(
+                chat_id,
+                "⚠️ Ya tengo un comprobante en proceso.\n\n"
+                "Si quieres registrar uno nuevo, primero escribe /cancelar."
+            )
+            return {"status": "ok"}
+    
         user_states[chat_id] = {
             "file_id": message["photo"][-1]["file_id"],
             "caption": message.get("caption", ""),
