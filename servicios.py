@@ -152,6 +152,13 @@ def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
         return json.loads(response.choices[0].message.content)
     except Exception as e:
         print(f"Error en LLM: {e}")
+    
+        try:
+            print("Respuesta recibida:")
+            print(response.choices[0].message.content)
+        except:
+            pass
+    
         return {"error": True}
 
 def calcular_codigo_y_nro(fecha_str: str) -> tuple:
