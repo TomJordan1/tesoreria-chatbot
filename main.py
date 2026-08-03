@@ -285,10 +285,13 @@ async def telegram_webhook(request: Request):
                 
         elif text in ["3", "editar"]:
             state["step"] = "editar"
+            d = state["datos_procesados"]
+            datos_actuales = f"{d.get('fecha')} ? {d.get('concepto')} ? {d.get('tipo')} ? {d.get('ing_eg')} ? {d.get('motivo')} ? {d.get('acreedor')} ? {d.get('deudor')} ? {d.get('estado')} ? {d.get('monto')}"
             respuesta = (
                 "✏️ <b>Modo edición manual (Mantén las '?' como separador, por favor):</b>\n\n"
                 "<code>Fecha ? Concepto ? Tipo ? Ing/Eg ? Motivo ? Acreedor ? Deudor ? Estado ? Monto</code>\n\n"
-                "<i>Copia y corrige este ejemplo:</i> \n<code>19/10/2025 ? Pago Hosting ? Compra ? Egreso ? Página Web ? No Aplica ? No Aplica ? Pagado ? 46.00</code>"
+                "<i>Copia, corrige lo que necesites y envíalo:</i>\n"
+                f"<code>{datos_actuales}</code>"
             )
             enviar_mensaje(chat_id, respuesta)
         elif text == "4":
