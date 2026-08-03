@@ -259,11 +259,15 @@ Devuelve exclusivamente un JSON válido con esta estructura:
         return {"error": True, "mensaje": msg} if msg else {"error": True}
 
 
-def calcular_codigo_y_nro(fecha_str: str) -> tuple:
+def calcular_codigo_y_nro(fecha_str: str, formato_usa: bool = False) -> tuple:
     """Calcula el autoincremental del día consultando las filas de Excel."""
     meses_letras = ["E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"]
     try:
-        dia, mes, anio = fecha_str.split("/")
+        partes = fecha_str.split("/")
+        if formato_usa:
+            mes, dia, anio = partes
+        else:
+            dia, mes, anio = partes
         letra_mes = meses_letras[int(mes) - 1]
         fecha_ddmmyy = f"{dia}{mes}{anio[-2:]}"
     except:
@@ -302,9 +306,9 @@ def calcular_codigo_y_nro(fecha_str: str) -> tuple:
     
     return codigo, nro_operacion_dia
 
-def guardar_en_excel(datos: dict, saldo_previo: float) -> dict:
+def guardar_en_excel(datos: dict, saldo_previo: float, formato_usa: bool = False) -> dict:
     """Guarda directamente en el Excel de SharePoint usando Graph API."""
-    codigo, nro_operacion_dia = calcular_codigo_y_nro(datos["fecha"])
+    codigo, nro_operacion_dia = calcular_codigo_y_nro(datos["fecha"], formato_usa)
     
     try:
         monto_float = float(datos["monto"])

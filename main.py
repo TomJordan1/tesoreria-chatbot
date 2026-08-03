@@ -23,7 +23,7 @@ def home():
     return {"status": "Servidor funcionando correctamente"}
 
 def enviar_mensaje(chat_id, texto):
-    requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={"chat_id": chat_id, "text": texto, "parse_mode": "HTML"})
+    requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={"chat_id": chat_id, "text": texto, "parse_mode": "HTML"}, timeout=10)
 
 def mostrar_resumen_y_opciones(chat_id):
     """Muestra el resumen final con la opción de editar restaurada."""
@@ -44,7 +44,7 @@ def mostrar_resumen_y_opciones(chat_id):
         f"1) Guardar en la base de datos\n"
         f"2) Guardar y generar PDF\n"
         f"3) Editar datos\n"
-        f"4) Cambiar fecha a formato USA (MM/DD/YYYY)\n"
+        f"4) Alternar formato de fecha (PE ↔ USA)\n"
         f"O envía /cancelar para abortar"
     )
     enviar_mensaje(chat_id, resumen)
@@ -74,6 +74,12 @@ def procesar_imagen_y_confirmar(chat_id):
         datos_ia = extraer_datos_recibo_llm(image_bytes, contexto)
 
         if "error" not in datos_ia:
+            # Si no se detectó fecha, usar la fecha actual de Perú
+            if datos_ia.get("fecha", "").lower() in ["no disponible", "no determinado", ""]:
+                from datetime import datetime, timezone, timedelta
+                zona_peru = timezone(timedelta(hours=-5))
+                datos_ia["fecha"] = datetime.now(zona_peru).strftime("%d/%m/%Y")
+            
             state["step"] = "confirmar"
             state["datos_procesados"] = datos_ia
             mostrar_resumen_y_opciones(chat_id)
@@ -232,7 +238,12 @@ async def telegram_webhook(request: Request):
             nombre_pdf = None
             nombre_img_temporal = None
             try:
-                datos_finales = guardar_en_excel(state["datos_procesados"], state["saldo_previo"])
+                # Re-consultar saldo actualizado justo antes de guardar
+                saldo_actual = obtener_saldo_actual()
+                if saldo_actual is not None:
+                    state["saldo_previo"] = saldo_actual
+                
+                datos_finales = guardar_en_excel(state["datos_procesados"], state["saldo_previo"], state.get("fecha_usa", False))
                 codigo_asignado = datos_finales["codigo"]
                 
                 if text == "1":
@@ -284,14 +295,27 @@ async def telegram_webhook(request: Request):
             d = state["datos_procesados"]
             fecha_original = d.get("fecha", "")
             try:
-                dia, mes, anio = fecha_original.split("/")
-                d["fecha"] = f"{mes}/{dia}/{anio}"
-                enviar_mensaje(chat_id, f"Fecha convertida a formato USA: <b>{d['fecha']}</b>")
+                partes = fecha_original.split("/")
+                if len(partes) != 3:
+                    raise ValueError("Formato no reconocido")
+                a, b, anio = partes
+                # Detectar formato actual: si ya está en USA (MM/DD), volver a PE (DD/MM)
+                # Usamos un flag en el state para trackear
+                if state.get("fecha_usa"):
+                    # Está en USA → volver a PE
+                    d["fecha"] = f"{b}/{a}/{anio}"
+                    state["fecha_usa"] = False
+                    enviar_mensaje(chat_id, f"Fecha convertida a formato Perú: <b>{d['fecha']}</b>")
+                else:
+                    # Está en PE → pasar a USA
+                    d["fecha"] = f"{b}/{a}/{anio}"
+                    state["fecha_usa"] = True
+                    enviar_mensaje(chat_id, f"Fecha convertida a formato USA: <b>{d['fecha']}</b>")
             except:
-                enviar_mensaje(chat_id, "No pude convertir la fecha. Verifica que esté en formato DD/MM/YYYY o edítala manualmente (opción 3).")
+                enviar_mensaje(chat_id, "No pude convertir la fecha. Verifica que tenga formato válido o edítala manualmente (opción 3).")
             mostrar_resumen_y_opciones(chat_id)
         else:
-            enviar_mensaje(chat_id, "Por favor responde con un numerito:\n1) Guardar\n2) Guardar y crear PDF\n3) Editar\n4) Cambiar fecha a formato USA\nO escribe /cancelar si ya no quieres guardarlo.")
+            enviar_mensaje(chat_id, "Por favor responde con un numerito:\n1) Guardar\n2) Guardar y crear PDF\n3) Editar\n4) Alternar formato de fecha\nO escribe /cancelar si ya no quieres guardarlo.")
         return {"status": "ok"}
 
     # Procesar datos editados
