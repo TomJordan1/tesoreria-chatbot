@@ -18,6 +18,24 @@ llm_client = OpenAI(
     timeout=30.0
 )
 
+# --- CONFIGURACIÓN DE MODELOS LLM ---
+# Cambiar aquí cuando se retire un modelo o se quiera probar otro.
+# "extra_params" son parámetros específicos del modelo (ej. reasoning_effort para Qwen3).
+# Si cambias a un modelo que no los soporta, déjalo como dict vacío {}.
+
+MODELO_VISION = {
+    "model": "qwen/qwen3.6-27b",
+    "max_completion_tokens": 2048,
+    "extra_params": {"reasoning_effort": "none"},
+}
+
+MODELO_TEXTO = {
+    "model": "llama-3.3-70b-versatile",
+    "max_completion_tokens": 512,
+    "temperature": 0,
+    "extra_params": {},
+}
+
 # --- CONFIGURACIÓN DE MICROSOFT GRAPH ---
 MS_TENANT_ID = os.getenv("MS_TENANT_ID")
 MS_CLIENT_ID = os.getenv("MS_CLIENT_ID")
@@ -100,9 +118,9 @@ def _extraer_texto_de_imagen(image_bytes: bytes) -> str:
     imagen_base64 = base64.b64encode(image_bytes).decode('utf-8')
 
     response = llm_client.chat.completions.create(
-        model="qwen/qwen3.6-27b",
-        max_completion_tokens=2048,
-        reasoning_effort="none",
+        model=MODELO_VISION["model"],
+        max_completion_tokens=MODELO_VISION["max_completion_tokens"],
+        **MODELO_VISION["extra_params"],
         messages=[
             {
                 "role": "user",
@@ -210,10 +228,11 @@ Devuelve exclusivamente un JSON válido con esta estructura:
 
     try:
         response = llm_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            temperature=0,
-            max_completion_tokens=512,
+            model=MODELO_TEXTO["model"],
+            temperature=MODELO_TEXTO["temperature"],
+            max_completion_tokens=MODELO_TEXTO["max_completion_tokens"],
             response_format={"type": "json_object"},
+            **MODELO_TEXTO["extra_params"],
             messages=[
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": prompt}
