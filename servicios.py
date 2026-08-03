@@ -199,9 +199,9 @@ Devuelve exclusivamente un JSON válido con esta estructura:
 
     try:
         response = llm_client.chat.completions.create(
-            model="openai/gpt-oss-120b",
+            model="llama-3.3-70b-versatile",
             temperature=0,
-            max_completion_tokens=300,
+            max_completion_tokens=512,
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system_msg},
