@@ -99,18 +99,48 @@ def _extraer_texto_de_imagen(image_bytes: bytes) -> str:
 
     response = llm_client.chat.completions.create(
         model="qwen/qwen3.6-27b",
-        max_completion_tokens=500,
+        max_completion_tokens=800,
         messages=[
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "/no_think\nTranscribe todo el texto visible en esta imagen. Solo el texto, sin formato ni explicación."},
+                    {"type": "text", "text": "Transcribe TODO el texto visible en esta imagen, incluyendo números, fechas y montos. Solo texto plano, sin explicaciones."},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{imagen_base64}"}}
                 ]
             }
         ]
     )
     return response.choices[0].message.content.strip()
+
+
+def _identificar_error_llm(excepcion: Exception) -> str:
+    """Clasifica el error de la API y devuelve un mensaje en personaje de Toribio."""
+    error_str = str(excepcion).lower()
+
+    if "model_not_found" in error_str or "model_decommissioned" in error_str:
+        return (
+            "¡Ay, no! Parece que el cerebrito que uso para leer comprobantes ya no está disponible. "
+            "Alguien lo desconectó o lo retiraron del servicio.\n\n"
+            "Por favor, avísale al área de TIC para que me actualicen. "
+            "Mientras tanto, no puedo procesar imágenes. ¡Perdón por las molestias!"
+        )
+    elif "rate_limit" in error_str or "429" in error_str:
+        return (
+            "🐌 ¡Uff! Me hicieron trabajar demasiado rápido y me pusieron en pausa. "
+            "Dame un minutito para recuperar el aliento y vuelve a intentarlo, ¿sí?"
+        )
+    elif "authentication" in error_str or "401" in error_str or "invalid_api_key" in error_str:
+        return (
+            "🔑 ¡Ups! Mi llave de acceso al servicio de inteligencia artificial no funciona. "
+            "Avísale al área de TIC para que la revisen, porque sin ella no puedo hacer nada. ¡Gracias!"
+        )
+    elif "timeout" in error_str or "timed out" in error_str:
+        return (
+            "⏱️ El servicio que me ayuda a pensar tardó demasiado en responderme... "
+            "puede que esté saturado. ¿Intentamos de nuevo en unos segundos?"
+        )
+    else:
+        return "Auh, hubo un error. Lo siento."  # Error genérico, sin mensaje especial
 
 
 def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
@@ -125,7 +155,8 @@ def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
         texto_ocr = _extraer_texto_de_imagen(image_bytes)
     except Exception as e:
         print(f"Error en OCR multimodal: {e}")
-        return {"error": True}
+        msg = _identificar_error_llm(e)
+        return {"error": True, "mensaje": msg} if msg else {"error": True}
 
     if not texto_ocr or len(texto_ocr) < 10:
         print(f"OCR devolvió texto insuficiente: '{texto_ocr}'")
@@ -177,7 +208,8 @@ Dato faltante="No disponible". Monto faltante=null."""
             print(response.choices[0].message.content)
         except:
             pass
-        return {"error": True}
+        msg = _identificar_error_llm(e)
+        return {"error": True, "mensaje": msg} if msg else {"error": True}
 
 
 def calcular_codigo_y_nro(fecha_str: str) -> tuple:

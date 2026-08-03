@@ -73,7 +73,8 @@ def procesar_imagen_y_confirmar(chat_id):
             state["datos_procesados"] = datos_ia
             mostrar_resumen_y_opciones(chat_id)
         else:
-            enviar_mensaje(chat_id, "No pude leer bien la imagen. Por favor, intenta enviarla de nuevo.")
+            msg_error = datos_ia.get("mensaje", "No pude leer bien la imagen. Por favor, intenta enviarla de nuevo.")
+            enviar_mensaje(chat_id, msg_error)
             user_states.pop(chat_id, None)
 
     except Exception as e:
