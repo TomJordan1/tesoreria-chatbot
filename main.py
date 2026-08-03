@@ -44,6 +44,7 @@ def mostrar_resumen_y_opciones(chat_id):
         f"1) Guardar en la base de datos\n"
         f"2) Guardar y generar PDF\n"
         f"3) Editar datos\n"
+        f"4) Cambiar fecha a formato USA (MM/DD/YYYY)\n"
         f"O envía /cancelar para abortar"
     )
     enviar_mensaje(chat_id, resumen)
@@ -279,8 +280,18 @@ async def telegram_webhook(request: Request):
                 "<i>Copia y corrige este ejemplo:</i> \n<code>19/10/2025 ? Pago Hosting ? Compra ? Egreso ? Página Web ? No Aplica ? No Aplica ? Pagado ? 46.00</code>"
             )
             enviar_mensaje(chat_id, respuesta)
+        elif text == "4":
+            d = state["datos_procesados"]
+            fecha_original = d.get("fecha", "")
+            try:
+                dia, mes, anio = fecha_original.split("/")
+                d["fecha"] = f"{mes}/{dia}/{anio}"
+                enviar_mensaje(chat_id, f"Fecha convertida a formato USA: <b>{d['fecha']}</b>")
+            except:
+                enviar_mensaje(chat_id, "No pude convertir la fecha. Verifica que esté en formato DD/MM/YYYY o edítala manualmente (opción 3).")
+            mostrar_resumen_y_opciones(chat_id)
         else:
-            enviar_mensaje(chat_id, "Por favor responde con un numerito:\n1) Guardar\n2) Guardar y crear PDF\n3) Editar\nO escribe /cancelar si ya no quieres guardarlo.")
+            enviar_mensaje(chat_id, "Por favor responde con un numerito:\n1) Guardar\n2) Guardar y crear PDF\n3) Editar\n4) Cambiar fecha a formato USA\nO escribe /cancelar si ya no quieres guardarlo.")
         return {"status": "ok"}
 
     # Procesar datos editados
