@@ -37,3 +37,5 @@ tesoreria-chatbot/
 ├── plantilla.html       # Molde de diseño y estructura visual con etiquetas {{campo}} para el PDF.
 ├── requirements.txt     # Dependencias y librerías de Python requeridas para producción.
 ├── **.env               # Variables de entorno y tokens de autenticación estrictamente secretos (ignorado en git).
+├── infografia.png       # Imagen guía del flujo del chatbot.
+└── logo.png             # Imagen de identidad visual del bot para documentación.
