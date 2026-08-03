@@ -220,7 +220,7 @@ Devuelve exclusivamente un JSON válido con esta estructura:
     "tipo": "Compra, DeudaXCobrar, Deuda Cobrada, Transferencia, Donación u otro si está claro. Si no: 'No determinado'",
     "ing_eg": "Ingreso, Egreso o 'No determinado'",
     "motivo": "Motivo encontrado o deducido en el comprobante o contexto. Si no existe: 'No disponible'",
-    "acreedor": "Entidad o persona que recibe dinero. Si no existe: 'No aplica'",
+    "acreedor": "Razón social completa si aparece en el comprobante. Si solo hay nombre comercial, usar ese. Si no existe: 'No aplica'",
     "deudor": "Entidad o persona que entrega dinero. Si no existe: 'No aplica'",
     "estado": "Pagado, Pendiente, Rechazado u otro si aparece. Si no: 'No determinado'",
     "monto": 0.00
