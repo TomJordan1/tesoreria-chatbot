@@ -6,7 +6,7 @@ Este documento detalla la arquitectura técnica actual del sistema de tesorería
 El sistema se compone de cuatro nodos principales que interactúan de forma secuencial:
 
 1. **Interfaz de Usuario (Telegram):** Punto de entrada. Los usuarios envían comprobantes fotográficos e instrucciones textuales al bot (Toribio).
-2. **Motor de Procesamiento (FastAPI + Groq LLM):** El servidor en Render recibe los webhooks de Telegram. Si hay una imagen, se utiliza la API de Groq para extraer el texto y clasificar los datos en un esquema JSON estructurado.
+2. **Motor de Procesamiento (FastAPI + Groq LLM):** El servidor en Render recibe los webhooks de Telegram. Si hay una imagen, se ejecuta un pipeline de dos pasos: (1) un modelo multimodal transcribe el texto del comprobante, y (2) un modelo de texto clasifica y estructura los datos en un esquema JSON. Los modelos son intercambiables desde la configuración centralizada en `servicios.py`.
 3. **Base de Datos (Excel en SharePoint):** Repositorio central de datos (`REGISTRODIARIO3`). El backend de Python se comunica con Excel usando la API de Microsoft Graph para insertar y leer filas.
 4. **Visualización (Power BI):** El modelo semántico alojado en Power BI Service se conecta directamente al archivo de SharePoint mediante una URL web, actualizando los dashboards de forma programada.
 
@@ -30,11 +30,21 @@ A continuación se detallan las modificaciones realizadas respecto a la versión
 *   **Columna Calculada:** Se modificó la columna `CÓDIGO` en la tabla para ejecutar una fórmula nativa (ej. `CHOOSE(MONTH(...))`). La columna calcula su propio valor automáticamente cuando Microsoft Graph inserta una nueva fila.
 *   **Alineación de Configuración Regional:** Se detectó un fallo en la inserción de fechas enviadas en formato `DD/MM/YYYY`, provocado por la configuración regional (US) de la cuenta de Microsoft 365. La solución implementada es cambiar la región a nivel de cuenta (Español/Perú) para alinear el motor de parseo interno de Excel con el formato emitido por el script en Python.
 
-### 2.3 Generación de PDF (Comprobantes)
+### 2.3 Pipeline de Extracción con IA (servicios.py)
+*   **Separación en Dos Pasos:** Se reemplazó la consulta multimodal única (imagen + prompt largo) por un pipeline desacoplado:
+    1.  **Paso 1 (OCR):** El modelo de visión (`qwen/qwen3.6-27b`) recibe la imagen y transcribe todo el texto plano visible, sin interpretar ni estructurar.
+    2.  **Paso 2 (Interpretación):** Un modelo de texto (`llama-3.3-70b-versatile`) recibe la transcripción y la estructura en el JSON financiero requerido.
+*   **Desactivación de Razonamiento:** Se utiliza el parámetro `reasoning_effort="none"` (API oficial de Groq) para evitar que Qwen3 genere bloques `<think>` que consumían tokens sin aportar a la transcripción. Se mantiene limpieza defensiva con regex por si el modelo ignora el parámetro.
+*   **Configuración Centralizada de Modelos:** Los modelos y sus parámetros específicos se definen en un bloque `MODELO_VISION` y `MODELO_TEXTO` al inicio de `servicios.py`. Esto permite cambiar de modelo sin modificar la lógica de las funciones.
+*   **Manejo de Errores con Personalidad:** Se implementó `_identificar_error_llm()` que clasifica errores de la API (modelo no encontrado, rate limit, autenticación, timeout) y devuelve mensajes en el personaje de Toribio para que el usuario sepa qué hacer.
+*   **Defensas Anti-Inyección:** El paso 2 usa un system prompt que declara los bloques `<COMPROBANTE>` y `<CONTEXTO>` como datos puros, nunca instrucciones. El contexto del usuario se sanitiza (reemplazo de `{}`, `` ``` ``, `<>`) y se limita a 200 caracteres.
+*   **Timeouts en Todas las Llamadas:** Se configuró timeout de 30s para Groq (a nivel del cliente OpenAI) y 15s para todas las llamadas a Microsoft Graph y Telegram API.
+
+### 2.4 Generación de PDF (Comprobantes)
 *   **Limpieza de Variables Residuales:** Se eliminaron las variables `proveedor`, `ruc` y `fecha_registro` de la lista de campos requeridos en `generador_pdf.py`. Operativamente, el campo `acreedor` cubre la función de identificar al proveedor comercial.
 *   **Ajuste de Plantilla HTML:** Se eliminó la etiqueta de tabla (`<tr>`) correspondiente al Proveedor Comercial en `plantilla.html` para evitar la impresión de celdas vacías (`N/A`) en el PDF final enviado al usuario.
 
-### 2.4 Power BI (Visualización)
+### 2.5 Power BI (Visualización)
 *   **Migración de Origen de Datos:** Se reemplazó el origen de datos local en Power Query (`C:\Users\...`) por una conexión Web hacia la ruta absoluta del documento en SharePoint.
 *   **Eliminación de Gateway Local:** Al apuntar directamente a la nube de Microsoft, se eliminó la dependencia de un "Personal Gateway" instalado en una máquina física.
 *   **Actualización Programada:** Se configuraron credenciales OAuth2 (Nivel Organizacional) en Power BI Service. Se programó el modelo semántico para ejecutar actualizaciones autónomas y periódicas (ej. diaria a la 1:00 a.m.), obteniendo la data de SharePoint sin intervención manual.
