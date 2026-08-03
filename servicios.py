@@ -102,6 +102,8 @@ def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
 
     prompt = f"""Extrae datos del comprobante. Contexto: {contexto_seguro}
 
+No pienses, no razones. Responde directamente con el JSON.
+
 Solo JSON válido:
 {{"fecha":"DD/MM/YYYY","concepto":"...","tipo":"Compra|DeudaXCobrar|Deuda Cobrada|Transferencia|Donación|No determinado","ing_eg":"Ingreso|Egreso|No determinado","motivo":"...","acreedor":"...","deudor":"...","estado":"Pagado|Pendiente|Rechazado|No determinado","monto":0.00}}
 
