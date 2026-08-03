@@ -32,8 +32,8 @@ A continuación se detallan las modificaciones realizadas respecto a la versión
 
 ### 2.3 Pipeline de Extracción con IA (servicios.py)
 *   **Separación en Dos Pasos:** Se reemplazó la consulta multimodal única (imagen + prompt largo) por un pipeline desacoplado:
-    1.  **Paso 1 (OCR):** El modelo de visión (`qwen/qwen3.6-27b`) recibe la imagen y transcribe todo el texto plano visible, sin interpretar ni estructurar.
-    2.  **Paso 2 (Interpretación):** Un modelo de texto (`llama-3.3-70b-versatile`) recibe la transcripción y la estructura en el JSON financiero requerido.
+    1.  **Paso 1 (OCR):** El modelo de visión recibe la imagen y transcribe todo el texto plano visible, sin interpretar ni estructurar.
+    2.  **Paso 2 (Interpretación):** Un modelo de texto recibe la transcripción y la estructura en el JSON financiero requerido.
 *   **Desactivación de Razonamiento:** Se utiliza el parámetro `reasoning_effort="none"` (API oficial de Groq) para evitar que Qwen3 genere bloques `<think>` que consumían tokens sin aportar a la transcripción. Se mantiene limpieza defensiva con regex por si el modelo ignora el parámetro.
 *   **Configuración Centralizada de Modelos:** Los modelos y sus parámetros específicos se definen en un bloque `MODELO_VISION` y `MODELO_TEXTO` al inicio de `servicios.py`. Esto permite cambiar de modelo sin modificar la lógica de las funciones.
 *   **Manejo de Errores con Personalidad:** Se implementó `_identificar_error_llm()` que clasifica errores de la API (modelo no encontrado, rate limit, autenticación, timeout) y devuelve mensajes en el personaje de Toribio para que el usuario sepa qué hacer.
