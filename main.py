@@ -57,9 +57,13 @@ def procesar_imagen_y_confirmar(chat_id):
     enviar_mensaje(chat_id, "Procesando el comprobante y cruzando la información. Dame un segundito...")
     
     try:
-        file_info = requests.get(f"{TELEGRAM_API_URL}/getFile?file_id={state['file_id']}").json()
+        file_info = requests.get(f"{TELEGRAM_API_URL}/getFile?file_id={state['file_id']}", timeout=10).json()
+        if not file_info.get("ok"):
+            enviar_mensaje(chat_id, "No pude obtener la imagen de Telegram. Puede que haya expirado. Envíamela de nuevo, por favor.")
+            user_states.pop(chat_id, None)
+            return
         file_path = file_info["result"]["file_path"]
-        image_bytes = requests.get(f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}").content
+        image_bytes = requests.get(f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}", timeout=15).content
 
         contexto = state.get("contexto_texto", "")
         if not contexto:
@@ -237,9 +241,13 @@ async def telegram_webhook(request: Request):
                     nombre_pdf = f"comprobante_{codigo_asignado}.pdf"
                     nombre_img_temporal = f"img_temp_{codigo_asignado}.jpg"
                     
-                    file_info = requests.get(f"{TELEGRAM_API_URL}/getFile?file_id={state['file_id']}").json()
+                    file_info = requests.get(f"{TELEGRAM_API_URL}/getFile?file_id={state['file_id']}", timeout=10).json()
+                    if not file_info.get("ok"):
+                        enviar_mensaje(chat_id, "No pude recuperar la imagen para el PDF. El comprobante ya fue guardado, pero no puedo generar el respaldo visual.")
+                        user_states.pop(chat_id, None)
+                        return {"status": "ok"}
                     file_path = file_info["result"]["file_path"]
-                    image_bytes = requests.get(f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}").content
+                    image_bytes = requests.get(f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}", timeout=15).content
                     
                     with open(nombre_img_temporal, "wb") as f_img:
                         f_img.write(image_bytes)

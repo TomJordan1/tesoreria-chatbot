@@ -14,7 +14,8 @@ if not GROQ_API_KEY:
 
 llm_client = OpenAI(
     api_key=GROQ_API_KEY,
-    base_url="https://api.groq.com/openai/v1"
+    base_url="https://api.groq.com/openai/v1",
+    timeout=30.0
 )
 
 # --- CONFIGURACIÓN DE MICROSOFT GRAPH ---
@@ -66,7 +67,7 @@ def obtener_saldo_actual():
     url = f"https://graph.microsoft.com/v1.0/sites/{MS_SITE_ID}/drives/{MS_DRIVE_ID}/items/{MS_ITEM_ID}/workbook/tables/{MS_TABLE_NAME}/rows"
     
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=15)
         if response.status_code != 200:
             print(f"Error consultando Excel: {response.text}")
             return None
@@ -153,7 +154,7 @@ def _identificar_error_llm(excepcion: Exception) -> str:
 
 
 def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
-    """/no_think Extrae datos del comprobante en dos pasos: OCR multimodal + interpretación con modelo de texto."""
+    """Extrae datos del comprobante en dos pasos: OCR multimodal + interpretación con modelo de texto."""
     contexto_seguro = (
         contexto_usuario.replace("{", "(").replace("}", ")").replace("```", "").replace("<", "").replace(">", "").strip()[:200]
         if contexto_usuario else "N/A"
@@ -259,7 +260,7 @@ def calcular_codigo_y_nro(fecha_str: str) -> tuple:
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
         url = f"https://graph.microsoft.com/v1.0/sites/{MS_SITE_ID}/drives/{MS_DRIVE_ID}/items/{MS_ITEM_ID}/workbook/tables/{MS_TABLE_NAME}/rows"
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=15)
             if response.status_code == 200:
                 filas = response.json().get("value", [])
                 conteo_hoy = 0
@@ -338,7 +339,7 @@ def guardar_en_excel(datos: dict, saldo_previo: float) -> dict:
     
     url = f"https://graph.microsoft.com/v1.0/sites/{MS_SITE_ID}/drives/{MS_DRIVE_ID}/items/{MS_ITEM_ID}/workbook/tables/{MS_TABLE_NAME}/rows/add"
     
-    response = requests.post(url, headers=headers, json=payload)
+    response = requests.post(url, headers=headers, json=payload, timeout=15)
     response.raise_for_status() 
     
     return datos
