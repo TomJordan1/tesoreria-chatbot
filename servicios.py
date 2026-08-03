@@ -100,7 +100,8 @@ def _extraer_texto_de_imagen(image_bytes: bytes) -> str:
 
     response = llm_client.chat.completions.create(
         model="qwen/qwen3.6-27b",
-        max_completion_tokens=4096,
+        max_completion_tokens=2048,
+        reasoning_effort="none",
         messages=[
             {
                 "role": "user",
@@ -113,9 +114,10 @@ def _extraer_texto_de_imagen(image_bytes: bytes) -> str:
     )
     contenido = response.choices[0].message.content.strip()
     
-    # Qwen3 puede incluir bloques <think>...</think> con razonamiento interno.
-    # Los eliminamos para quedarnos solo con la transcripción útil.
+    # Limpieza defensiva por si el modelo aún incluye bloques <think>
     contenido = re.sub(r"<think>.*?</think>", "", contenido, flags=re.DOTALL).strip()
+    if contenido.startswith("<think>"):
+        contenido = ""
     
     return contenido
 
