@@ -175,10 +175,19 @@ def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
 {contexto_seguro}
 </CONTEXTO>
 
-JSON exacto:
-{{"fecha":"DD/MM/YYYY","concepto":"...","tipo":"Compra|DeudaXCobrar|Deuda Cobrada|Transferencia|Donación|No determinado","ing_eg":"Ingreso|Egreso|No determinado","motivo":"...","acreedor":"...","deudor":"...","estado":"Pagado|Pendiente|Rechazado|No determinado","monto":0.00}}
+Devuelve exclusivamente un JSON válido con esta estructura:
 
-Dato faltante="No disponible". Monto faltante=null."""
+{{
+    "fecha": "DD/MM/YYYY o 'No disponible'",
+    "concepto": "Descripción breve basada únicamente en la información encontrada",
+    "tipo": "Compra, DeudaXCobrar, Deuda Cobrada, Transferencia, Donación u otro si está claro. Si no: 'No determinado'",
+    "ing_eg": "Ingreso, Egreso o 'No determinado'",
+    "motivo": "Motivo encontrado en el comprobante o contexto (ej. Página Web, Integración). Si no existe: 'No disponible'",
+    "acreedor": "Entidad o persona que recibe dinero. Si no existe: 'No aplica'",
+    "deudor": "Entidad o persona que entrega dinero. Si no existe: 'No aplica'",
+    "estado": "Pagado, Pendiente, Rechazado u otro si aparece. Si no: 'No determinado'",
+    "monto": 0.00
+}}"""
 
     try:
         response = llm_client.chat.completions.create(
