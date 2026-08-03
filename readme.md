@@ -23,7 +23,7 @@ El bot recibe fotografías de recibos, boletas o facturas, utiliza un Modelo de 
 
 ## 🛠️ Stack Tecnológico
 * **Core:** Python 3.11+ & FastAPI (servidor web asíncrono gestionado con Uvicorn).
-* **Inteligencia Artificial:** OpenAI SDK (redireccionado a Groq). Pipeline OCR multimodal (`qwen/qwen3.6-27b`) + interpretación de texto (`llama-3.3-70b-versatile`).
+* **Inteligencia Artificial:** OpenAI SDK (redireccionado a Groq). Pipeline OCR multimodal + interpretación de texto.
 * **Manipulación de PDFs:** `fpdf2` (conversión nativa y ligera de HTML a PDF en local).
 * **Integración de Datos:** Conexión nativa a Microsoft Graph API (con `msal`) para registrar en SharePoint de forma directa.
 
