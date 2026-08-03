@@ -41,6 +41,7 @@ MS_SITE_ID=tu_site_id_de_sharepoint
 MS_DRIVE_ID=tu_drive_id_de_sharepoint
 MS_ITEM_ID=tu_item_id_del_excel
 MS_TABLE_NAME=REGISTRODIARIO3
+FORMATO_FECHA_EXCEL=PE
 ```
 
 ---
@@ -80,7 +81,10 @@ MS_SITE_ID=tu_site_id_de_sharepoint
 MS_DRIVE_ID=tu_drive_id_de_sharepoint
 MS_ITEM_ID=tu_item_id_del_excel
 MS_TABLE_NAME=REGISTRODIARIO3
+FORMATO_FECHA_EXCEL=PE
 ```
+
+> **Nota:** `FORMATO_FECHA_EXCEL` acepta `PE` (DD/MM/YYYY, por defecto) o `US` (MM/DD/YYYY). Cambiar solo si la región del Excel Online está configurada en inglés.
 
 ---
 

@@ -44,7 +44,13 @@ A continuación se detallan las modificaciones realizadas respecto a la versión
 *   **Limpieza de Variables Residuales:** Se eliminaron las variables `proveedor`, `ruc` y `fecha_registro` de la lista de campos requeridos en `generador_pdf.py`. Operativamente, el campo `acreedor` cubre la función de identificar al proveedor comercial.
 *   **Ajuste de Plantilla HTML:** Se eliminó la etiqueta de tabla (`<tr>`) correspondiente al Proveedor Comercial en `plantilla.html` para evitar la impresión de celdas vacías (`N/A`) en el PDF final enviado al usuario.
 
-### 2.5 Power BI (Visualización)
+### 2.5 Manejo de Fechas y Saldos
+*   **Saldo Actualizado al Guardar:** Se re-consulta `obtener_saldo_actual()` justo antes de escribir en Excel, previniendo cálculos incorrectos si otro usuario guardó una operación entre el envío de la imagen y la confirmación.
+*   **Fecha por Defecto:** Si el LLM no detecta la fecha en el comprobante, se usa automáticamente la fecha actual de Perú (UTC-5). El usuario la ve en el resumen y puede editarla.
+*   **Toggle de Formato PE/USA:** La opción 4 del menú de confirmación alterna entre DD/MM/YYYY y MM/DD/YYYY de forma reversible.
+*   **Variable `FORMATO_FECHA_EXCEL`:** Variable de entorno (por defecto `PE`) que define el formato base de fecha para el parseo interno del código. Configurable desde Render sin tocar código. Solo cambiar a `US` si la región del Excel Online está en inglés.
+
+### 2.6 Power BI (Visualización)
 *   **Migración de Origen de Datos:** Se reemplazó el origen de datos local en Power Query (`C:\Users\...`) por una conexión Web hacia la ruta absoluta del documento en SharePoint.
 *   **Eliminación de Gateway Local:** Al apuntar directamente a la nube de Microsoft, se eliminó la dependencia de un "Personal Gateway" instalado en una máquina física.
 *   **Actualización Programada:** Se configuraron credenciales OAuth2 (Nivel Organizacional) en Power BI Service. Se programó el modelo semántico para ejecutar actualizaciones autónomas y periódicas (ej. diaria a la 1:00 a.m.), obteniendo la data de SharePoint sin intervención manual.
