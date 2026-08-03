@@ -93,13 +93,15 @@ def obtener_saldo_actual():
         print(f"Excepción obteniendo saldo actual: {e}")
         return None
 
+import re
+
 def _extraer_texto_de_imagen(image_bytes: bytes) -> str:
     """Paso 1: Usa el modelo multimodal solo para transcribir el texto de la imagen."""
     imagen_base64 = base64.b64encode(image_bytes).decode('utf-8')
 
     response = llm_client.chat.completions.create(
         model="qwen/qwen3.6-27b",
-        max_completion_tokens=800,
+        max_completion_tokens=1600,
         messages=[
             {
                 "role": "user",
@@ -110,7 +112,13 @@ def _extraer_texto_de_imagen(image_bytes: bytes) -> str:
             }
         ]
     )
-    return response.choices[0].message.content.strip()
+    contenido = response.choices[0].message.content.strip()
+    
+    # Qwen3 puede incluir bloques <think>...</think> con razonamiento interno.
+    # Los eliminamos para quedarnos solo con la transcripción útil.
+    contenido = re.sub(r"<think>.*?</think>", "", contenido, flags=re.DOTALL).strip()
+    
+    return contenido
 
 
 def _identificar_error_llm(excepcion: Exception) -> str:
@@ -177,7 +185,7 @@ def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
     prompt = f"""Extrae datos financieros.
 
 <COMPROBANTE>
-{texto_ocr[:800]}
+{texto_ocr[:1500]}
 </COMPROBANTE>
 
 <CONTEXTO>
@@ -191,7 +199,7 @@ Devuelve exclusivamente un JSON válido con esta estructura:
     "concepto": "Descripción breve basada únicamente en la información encontrada",
     "tipo": "Compra, DeudaXCobrar, Deuda Cobrada, Transferencia, Donación u otro si está claro. Si no: 'No determinado'",
     "ing_eg": "Ingreso, Egreso o 'No determinado'",
-    "motivo": "Motivo encontrado en el comprobante o contexto. Si no existe: 'No disponible'",
+    "motivo": "Motivo encontrado o deducido en el comprobante o contexto. Si no existe: 'No disponible'",
     "acreedor": "Entidad o persona que recibe dinero. Si no existe: 'No aplica'",
     "deudor": "Entidad o persona que entrega dinero. Si no existe: 'No aplica'",
     "estado": "Pagado, Pendiente, Rechazado u otro si aparece. Si no: 'No determinado'",
