@@ -190,7 +190,7 @@ Devuelve exclusivamente un JSON válido con esta estructura:
     "concepto": "Descripción breve basada únicamente en la información encontrada",
     "tipo": "Compra, DeudaXCobrar, Deuda Cobrada, Transferencia, Donación u otro si está claro. Si no: 'No determinado'",
     "ing_eg": "Ingreso, Egreso o 'No determinado'",
-    "motivo": "Motivo encontrado en el comprobante o contexto (ej. Página Web, Integración). Si no existe: 'No disponible'",
+    "motivo": "Motivo encontrado en el comprobante o contexto. Si no existe: 'No disponible'",
     "acreedor": "Entidad o persona que recibe dinero. Si no existe: 'No aplica'",
     "deudor": "Entidad o persona que entrega dinero. Si no existe: 'No aplica'",
     "estado": "Pagado, Pendiente, Rechazado u otro si aparece. Si no: 'No determinado'",
@@ -199,7 +199,7 @@ Devuelve exclusivamente un JSON válido con esta estructura:
 
     try:
         response = llm_client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-120b",
             temperature=0,
             max_completion_tokens=300,
             response_format={"type": "json_object"},
