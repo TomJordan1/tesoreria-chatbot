@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import base64
 import requests
 from openai import OpenAI
@@ -93,15 +94,13 @@ def obtener_saldo_actual():
         print(f"Excepción obteniendo saldo actual: {e}")
         return None
 
-import re
-
 def _extraer_texto_de_imagen(image_bytes: bytes) -> str:
     """Paso 1: Usa el modelo multimodal solo para transcribir el texto de la imagen."""
     imagen_base64 = base64.b64encode(image_bytes).decode('utf-8')
 
     response = llm_client.chat.completions.create(
         model="qwen/qwen3.6-27b",
-        max_completion_tokens=1600,
+        max_completion_tokens=4096,
         messages=[
             {
                 "role": "user",
@@ -287,7 +286,7 @@ def guardar_en_excel(datos: dict, saldo_previo: float) -> dict:
     
     try:
         monto_float = float(datos["monto"])
-    except ValueError:
+    except (ValueError, TypeError):
         monto_float = 0.0
 
     ingreso_val = 0
