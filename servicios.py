@@ -104,7 +104,7 @@ def _extraer_texto_de_imagen(image_bytes: bytes) -> str:
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Transcribe todo el texto visible en esta imagen. Solo el texto, sin formato ni explicación."},
+                    {"type": "text", "text": "/no_think\nTranscribe todo el texto visible en esta imagen. Solo el texto, sin formato ni explicación."},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{imagen_base64}"}}
                 ]
             }
