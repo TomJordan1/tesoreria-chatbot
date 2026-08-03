@@ -96,7 +96,16 @@ def obtener_saldo_actual():
 def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
     imagen_base64 = base64.b64encode(image_bytes).decode('utf-8')
 
-    contexto_seguro = contexto_usuario[:500] if contexto_usuario else "No Aplica"
+    contexto_seguro = contexto_seguro = (
+        contexto_usuario.replace("{", "(")
+                         .replace("}", ")")
+                         .replace("```", "")
+                         .replace("<", "")
+                         .replace(">", "")
+                         .strip()[:500]
+        if contexto_usuario
+        else "No Aplica"
+    )
     
     prompt = f"""
         Eres un sistema de extracción de datos financieros. Tu única tarea es analizar un comprobante de pago (o captura) y cruzar la información con el contexto del usuario.
@@ -118,7 +127,7 @@ def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
         
         CONTEXTO DEL USUARIO:
         ---
-        {contexto_usuario}
+        {contexto_seguro}
         ---
         
         Devuelve exclusivamente un JSON válido con esta estructura:
