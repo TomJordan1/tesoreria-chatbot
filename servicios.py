@@ -153,6 +153,7 @@ def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
     # Paso 1: Extraer texto de la imagen con el modelo de visión
     try:
         texto_ocr = _extraer_texto_de_imagen(image_bytes)
+        print(f"--- TEXTO OCR EXTRAÍDO ---\n{texto_ocr}\n--- FIN OCR ---")
     except Exception as e:
         print(f"Error en OCR multimodal: {e}")
         msg = _identificar_error_llm(e)
