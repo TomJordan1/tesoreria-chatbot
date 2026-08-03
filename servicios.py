@@ -36,6 +36,11 @@ MODELO_TEXTO = {
     "extra_params": {},
 }
 
+# --- CONFIGURACIÓN DE FORMATO DE FECHA ---
+# "PE" = DD/MM/YYYY (Perú, por defecto), "US" = MM/DD/YYYY (USA)
+# Cambiar desde Render si la región del Excel Online está en inglés.
+FORMATO_FECHA_EXCEL = os.getenv("FORMATO_FECHA_EXCEL", "PE")
+
 # --- CONFIGURACIÓN DE MICROSOFT GRAPH ---
 MS_TENANT_ID = os.getenv("MS_TENANT_ID")
 MS_CLIENT_ID = os.getenv("MS_CLIENT_ID")
@@ -308,7 +313,9 @@ def calcular_codigo_y_nro(fecha_str: str, formato_usa: bool = False) -> tuple:
 
 def guardar_en_excel(datos: dict, saldo_previo: float, formato_usa: bool = False) -> dict:
     """Guarda directamente en el Excel de SharePoint usando Graph API."""
-    codigo, nro_operacion_dia = calcular_codigo_y_nro(datos["fecha"], formato_usa)
+    # El formato final se determina por: variable de entorno OR toggle del usuario
+    usar_usa = formato_usa or FORMATO_FECHA_EXCEL == "US"
+    codigo, nro_operacion_dia = calcular_codigo_y_nro(datos["fecha"], usar_usa)
     
     try:
         monto_float = float(datos["monto"])
