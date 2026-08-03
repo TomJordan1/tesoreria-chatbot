@@ -151,7 +151,7 @@ def _identificar_error_llm(excepcion: Exception) -> str:
 
 
 def extraer_datos_recibo_llm(image_bytes: bytes, contexto_usuario: str) -> dict:
-    """Extrae datos del comprobante en dos pasos: OCR multimodal + interpretación con modelo de texto."""
+    """/no_think Extrae datos del comprobante en dos pasos: OCR multimodal + interpretación con modelo de texto."""
     contexto_seguro = (
         contexto_usuario.replace("{", "(").replace("}", ")").replace("```", "").replace("<", "").replace(">", "").strip()[:200]
         if contexto_usuario else "N/A"
