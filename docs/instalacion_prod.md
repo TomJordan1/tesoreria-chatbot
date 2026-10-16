@@ -35,6 +35,8 @@ Crea un archivo `.env` en la raíz del proyecto:
 TELEGRAM_TOKEN=tu_token_de_telegram
 TELEGRAM_WEBHOOK_SECRET=tu_secreto_aleatorio_del_webhook
 GROQ_API_KEY=tu_api_key_de_groq
+GROQ_MODELO_VISION=qwen/qwen3.6-27b
+GROQ_MODELO_TEXTO=llama-3.3-70b-versatile
 MS_TENANT_ID=tu_tenant_id_de_microsoft
 MS_CLIENT_ID=tu_client_id_de_microsoft
 MS_CLIENT_SECRET=tu_client_secret_de_microsoft
@@ -85,6 +87,8 @@ Agregar en Render:
 TELEGRAM_TOKEN=tu_token_de_telegram
 TELEGRAM_WEBHOOK_SECRET=tu_secreto_aleatorio_del_webhook
 GROQ_API_KEY=tu_api_key_de_groq
+GROQ_MODELO_VISION=qwen/qwen3.6-27b
+GROQ_MODELO_TEXTO=llama-3.3-70b-versatile
 MS_TENANT_ID=tu_tenant_id_de_microsoft
 MS_CLIENT_ID=tu_client_id_de_microsoft
 MS_CLIENT_SECRET=tu_client_secret_de_microsoft
@@ -119,3 +123,7 @@ Si todo salió correctamente, Telegram responderá:
 Antes de habilitar esta versión, prepara la tabla `USUARIOS_AUTORIZADOS` en otro Excel de la misma biblioteca de SharePoint. Sigue [Control de acceso desde Excel](control_acceso.md) para dar de alta a la primera persona con `/mi_id`. Configura `MS_USUARIOS_ITEM_ID` en Render con el ID del archivo de usuarios. Sin usuarios habilitados, solo funciona `/mi_id`; las altas y bajas se reflejan al renovar la lista, hasta dos minutos después.
 
 Ahora puedes enviar fotos o mensajes a tu bot desde Telegram y el servidor procesará las solicitudes.
+
+### Modelos de IA configurables
+
+`GROQ_MODELO_VISION` y `GROQ_MODELO_TEXTO` son opcionales y conservan los modelos actuales si se omiten. Se pueden cambiar sin editar código; al guardar, reinicia o despliega el servicio para aplicar la configuración. Si el nuevo modelo de visión no admite `reasoning_effort`, configura `GROQ_VISION_EXTRA_PARAMS={}`. Consulta [la guía de modelos de Groq](modelos_groq.md) para las opciones específicas.

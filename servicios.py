@@ -21,21 +21,36 @@ llm_client = OpenAI(
 )
 
 # --- CONFIGURACIÓN DE MODELOS LLM ---
-# Cambiar aquí cuando se retire un modelo o se quiera probar otro.
-# "extra_params" son parámetros específicos del modelo (ej. reasoning_effort para Qwen3).
-# Si cambias a un modelo que no los soporta, déjalo como dict vacío {}.
+# Los nombres se pueden cambiar desde Render o .env; los valores actuales
+# se conservan si no se configuran las variables opcionales.
+
+def _parametros_modelo_desde_entorno(nombre_variable, predeterminado):
+    """Lee opciones específicas del modelo como un objeto JSON."""
+    valor = os.getenv(nombre_variable)
+    if valor is None or not valor.strip():
+        return predeterminado.copy()
+    try:
+        parametros = json.loads(valor)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"{nombre_variable} debe ser un objeto JSON válido.") from e
+    if not isinstance(parametros, dict):
+        raise ValueError(f"{nombre_variable} debe ser un objeto JSON, por ejemplo {{}}.")
+    reservados = {"model", "messages", "max_completion_tokens", "temperature", "response_format"}
+    if reservados.intersection(parametros):
+        raise ValueError(f"{nombre_variable} solo admite opciones adicionales, no parámetros base de la llamada.")
+    return parametros
 
 MODELO_VISION = {
-    "model": "qwen/qwen3.6-27b",
+    "model": (os.getenv("GROQ_MODELO_VISION") or "").strip() or "qwen/qwen3.6-27b",
     "max_completion_tokens": 2048,
-    "extra_params": {"reasoning_effort": "none"},
+    "extra_params": _parametros_modelo_desde_entorno("GROQ_VISION_EXTRA_PARAMS", {"reasoning_effort": "none"}),
 }
 
 MODELO_TEXTO = {
-    "model": "llama-3.3-70b-versatile",
+    "model": (os.getenv("GROQ_MODELO_TEXTO") or "").strip() or "llama-3.3-70b-versatile",
     "max_completion_tokens": 512,
     "temperature": 0,
-    "extra_params": {},
+    "extra_params": _parametros_modelo_desde_entorno("GROQ_TEXTO_EXTRA_PARAMS", {}),
 }
 
 # --- CONFIGURACIÓN DE FORMATO DE FECHA ---

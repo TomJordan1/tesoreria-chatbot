@@ -35,6 +35,8 @@ Crea un archivo `.env` en la raíz del proyecto:
 TELEGRAM_TOKEN=tu_token_de_telegram
 TELEGRAM_WEBHOOK_SECRET=tu_secreto_aleatorio_del_webhook
 GROQ_API_KEY=tu_api_key_de_groq
+GROQ_MODELO_VISION=qwen/qwen3.6-27b
+GROQ_MODELO_TEXTO=llama-3.3-70b-versatile
 MS_TENANT_ID=tu_tenant_id_de_microsoft
 MS_CLIENT_ID=tu_client_id_de_microsoft
 MS_CLIENT_SECRET=tu_client_secret_de_microsoft
@@ -99,3 +101,7 @@ Antes de probar registros, configura la tabla de usuarios siguiendo [Control de 
 Ahora puedes enviar fotos o mensajes a tu bot desde Telegram y el servidor local procesará las solicitudes en tiempo real.
 
 Para probar sin insertar registros en Excel, elige **5) Generar PDF sin registrar en Excel** en el resumen. Si la consulta inicial de saldo falla o la tabla está vacía, usa `/solo_pdf` para continuar sin saldo inicial. El PDF lleva un aviso de prueba; puedes editar los datos o terminar con `/cancelar`. Las opciones 1 y 2 sí guardan en la tabla configurada, incluso cuando el servidor corre localmente.
+
+### Modelos de IA configurables
+
+`GROQ_MODELO_VISION` y `GROQ_MODELO_TEXTO` son opcionales y conservan los modelos actuales si se omiten. Se pueden cambiar sin editar código; al guardar, reinicia o despliega el servicio para aplicar la configuración. Si el nuevo modelo de visión no admite `reasoning_effort`, configura `GROQ_VISION_EXTRA_PARAMS={}`. Consulta [la guía de modelos de Groq](modelos_groq.md) para las opciones específicas.

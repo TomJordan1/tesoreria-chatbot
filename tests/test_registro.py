@@ -270,6 +270,36 @@ class FlujoRegistro(unittest.TestCase):
                     self.assertIn("ya está guardada en Excel", self.mensajes.call_args.args[1])
 
 
+class ConfiguracionModelos(unittest.TestCase):
+    def configurar(self, **valores):
+        variables = {"GROQ_MODELO_VISION": "", "GROQ_MODELO_TEXTO": "", "GROQ_VISION_EXTRA_PARAMS": "", "GROQ_TEXTO_EXTRA_PARAMS": ""}
+        variables.update(valores)
+        with patch.dict(os.environ, variables):
+            return cargar_modulos()[0]
+
+    def test_valores_actuales_se_conservan_sin_configuracion(self):
+        modulo = self.configurar()
+        self.assertEqual(modulo.MODELO_VISION["model"], "qwen/qwen3.6-27b")
+        self.assertEqual(modulo.MODELO_VISION["extra_params"], {"reasoning_effort": "none"})
+        self.assertEqual(modulo.MODELO_TEXTO["model"], "llama-3.3-70b-versatile")
+        self.assertEqual(modulo.MODELO_TEXTO["extra_params"], {})
+
+    def test_nombres_y_opciones_se_leen_del_entorno(self):
+        modulo = self.configurar(GROQ_MODELO_VISION=" vision-ejemplo ", GROQ_MODELO_TEXTO=" texto-ejemplo ", GROQ_VISION_EXTRA_PARAMS="{}", GROQ_TEXTO_EXTRA_PARAMS='{"reasoning_effort":"none"}')
+        self.assertEqual(modulo.MODELO_VISION["model"], "vision-ejemplo")
+        self.assertEqual(modulo.MODELO_TEXTO["model"], "texto-ejemplo")
+        self.assertEqual(modulo.MODELO_VISION["extra_params"], {})
+        self.assertEqual(modulo.MODELO_TEXTO["extra_params"], {"reasoning_effort": "none"})
+        self.assertEqual(modulo.MODELO_VISION["max_completion_tokens"], 2048)
+        self.assertEqual(modulo.MODELO_TEXTO["max_completion_tokens"], 512)
+        self.assertEqual(modulo.MODELO_TEXTO["temperature"], 0)
+
+    def test_opciones_invalidas_fallan_con_nombre_de_variable(self):
+        for valor in ("no json", "[]", "null", '{"model":"otro"}', '{"messages":[]}'):
+            with self.subTest(valor=valor), self.assertRaisesRegex(ValueError, "GROQ_VISION_EXTRA_PARAMS"):
+                self.configurar(GROQ_VISION_EXTRA_PARAMS=valor)
+
+
 class SeguridadWebhook(unittest.TestCase):
     def test_rechaza_secretos_incorrectos_antes_de_leer_json_o_consultar_excel(self):
         for secreto in (None, "", "incorrecto", "ñ", main.TELEGRAM_WEBHOOK_SECRET + "x"):
