@@ -2,6 +2,7 @@ import os
 import requests
 import traceback
 import math
+from uuid import uuid4
 from fastapi import FastAPI, Request
 from dotenv import load_dotenv
 
@@ -47,6 +48,7 @@ def mostrar_resumen_y_opciones(chat_id):
         f"2) Guardar y generar PDF\n"
         f"3) Editar datos\n"
         f"4) Alternar formato de fecha (PE ↔ USA)\n"
+        f"5) Solo generar PDF de prueba (sin guardar)\n"
         f"O envía /cancelar para abortar"
     )
     enviar_mensaje(chat_id, resumen)
@@ -57,15 +59,20 @@ def preparar_registro(chat_id):
         saldo_actual = obtener_saldo_actual()
     except ErrorConsultaSaldo:
         user_states[chat_id]["step"] = "consultar_saldo"
-        enviar_mensaje(chat_id, "¡Chispas! No pude consultar el saldo de Excel. Conservé tu foto. Escribe 1 para reintentar o /cancelar para salir.")
+        enviar_mensaje(chat_id, "¡Chispas! No pude consultar el saldo de Excel. Conservé tu foto. Escribe 1 para reintentar, /solo_pdf para probar sin guardar o /cancelar para salir.")
         return
     if saldo_actual is None:
         user_states[chat_id]["step"] = "pedir_saldo_base"
-        enviar_mensaje(chat_id, "¡Hola! Veo que es el primer registro en la base de datos.\nPara calcular los saldos correctamente, por favor dime: ¿cuál es el <b>Saldo Base / Inicial</b> en caja? (ej. 1500.50)")
+        enviar_mensaje(chat_id, "¡Hola! Veo que es el primer registro en la base de datos.\nPara calcular los saldos correctamente, por favor dime: ¿cuál es el <b>Saldo Base / Inicial</b> en caja? (ej. 1500.50). También puedes usar /solo_pdf para probar sin guardar.")
         return
 
     user_states[chat_id]["saldo_previo"] = saldo_actual
 
+    continuar_registro(chat_id)
+
+
+def continuar_registro(chat_id):
+    """Continúa la captura de contexto, con o sin saldo disponible."""
     if user_states[chat_id]["caption"]:
         user_states[chat_id]["contexto_texto"] = user_states[chat_id]["caption"]
         user_states[chat_id]["step"] = "esperar_lectura"
@@ -75,7 +82,7 @@ def preparar_registro(chat_id):
         enviar_mensaje(chat_id, "¡Recibido! ¿Cómo me cuentas el resto de los detalles?\n\n✍️ Escribe <b>'manual'</b> para que te pregunte paso a paso.\n🗣️ O si prefieres, escríbeme <b>toda la historia junta aquí</b>.\n\n❓ <i>Si no entiendes qué está pasando o quieres ver la guía, escribe <b>/ayuda</b></i>")
 
 
-def enviar_comprobante_pdf(chat_id, state, datos_finales):
+def enviar_comprobante_pdf(chat_id, state, datos_finales, solo_pdf=False):
     """Genera y envía el respaldo; siempre intenta limpiar los archivos temporales."""
     codigo_asignado = datos_finales["codigo"]
     nombre_pdf = f"comprobante_{codigo_asignado}.pdf"
@@ -93,7 +100,7 @@ def enviar_comprobante_pdf(chat_id, state, datos_finales):
         with open(nombre_pdf, 'rb') as archivo:
             respuesta_pdf = requests.post(
                 f"{TELEGRAM_API_URL}/sendDocument",
-                data={"chat_id": chat_id, "caption": f"📄 Respaldo de tu tesorería - Código: {codigo_asignado}"},
+                data={"chat_id": chat_id, "caption": "🧪 PDF de prueba: no registrado en Excel" if solo_pdf else f"📄 Respaldo de tu tesorería - Código: {codigo_asignado}"},
                 files={"document": archivo},
                 timeout=30
             )
@@ -224,6 +231,14 @@ async def telegram_webhook(request: Request):
         enviar_mensaje(chat_id, "¡Hola! Soy Toribot, tu asistente de tesorería. Envíame la foto de tu comprobante o captura para empezar.\n\n💡 <i>Tip: Si me pones toda la explicación en la leyenda de la foto, vamos más rápido.</i>\n🛑 <i>Tip: Escribe <b>/cancelar</b> en cualquier momento si quieres abortar y empezar de nuevo.</i>\n❓ <i>Tip: Escribe <b>/ayuda</b> para ver mi infografía explicativa.</i>")
         return {"status": "ok"}
 
+    if text.lower() == "/solo_pdf" and state.get("step") in ("consultar_saldo", "pedir_saldo_base"):
+        if "datos_procesados" in state:
+            state["step"] = "confirmar"
+            mostrar_resumen_y_opciones(chat_id)
+        else:
+            continuar_registro(chat_id)
+        return {"status": "ok"}
+
     if state.get("step") == "verificar_guardado":
         enviar_mensaje(chat_id, "El guardado anterior está pendiente de verificación en Excel. Revísalo con el área de TIC antes de repetirlo; luego usa /cancelar para salir.")
         return {"status": "ok"}
@@ -241,6 +256,10 @@ async def telegram_webhook(request: Request):
             if not math.isfinite(saldo_base):
                 raise ValueError("Saldo no finito")
             state["saldo_previo"] = saldo_base
+            if "datos_procesados" in state:
+                state["step"] = "confirmar"
+                mostrar_resumen_y_opciones(chat_id)
+                return {"status": "ok"}
             if state["caption"]:
                 state["contexto_texto"] = state["caption"]
                 state["step"] = "esperar_lectura"
@@ -308,6 +327,10 @@ async def telegram_webhook(request: Request):
                 return {"status": "ok"}
             if saldo_actual is not None:
                 state["saldo_previo"] = saldo_actual
+            if state.get("saldo_previo") is None:
+                state["step"] = "pedir_saldo_base"
+                enviar_mensaje(chat_id, "Para guardar esta primera operación necesito el saldo inicial. Envíalo como número con punto decimal (ej. 1500.50), o usa /solo_pdf para continuar sin guardar.")
+                return {"status": "ok"}
 
             try:
                 datos_finales = guardar_en_excel(state["datos_procesados"], state["saldo_previo"], state.get("fecha_usa", False))
@@ -334,6 +357,28 @@ async def telegram_webhook(request: Request):
                 traceback.print_exc()
                 detalle = "falló la generación o el envío del PDF" if text == "2" else "falló el envío de la confirmación"
                 enviar_mensaje(chat_id, f"La operación <b>{codigo_asignado}</b> ya está guardada en Excel, pero {detalle}. No vuelvas a registrarla. Contacta al área de TIC si necesitas el respaldo.")
+
+        elif text == "5":
+            try:
+                monto, clasificacion = validar_operacion(state["datos_procesados"])
+            except ErrorValidacionOperacion as e:
+                enviar_mensaje(chat_id, f"No pude generar el PDF de prueba. {e} Usa la opción 3 para corregir los datos.")
+                return {"status": "ok"}
+            datos_prueba = {
+                **state["datos_procesados"],
+                "codigo": f"PRUEBA_{uuid4().hex[:12]}",
+                "nro_operacion_dia": "Sin registro",
+                "ingreso_final": monto if clasificacion == "ingreso" else 0,
+                "egreso_final": monto if clasificacion == "egreso" else 0,
+                "saldo": "No calculado (prueba)",
+                "solo_pdf": True,
+            }
+            try:
+                enviar_comprobante_pdf(chat_id, state, datos_prueba, solo_pdf=True)
+                enviar_mensaje(chat_id, "🧪 PDF de prueba enviado. No se guardó nada en Excel. Puedes seguir editando o usar /cancelar para terminar.")
+            except Exception:
+                traceback.print_exc()
+                enviar_mensaje(chat_id, "No pude generar o enviar el PDF de prueba. No se guardó nada en Excel y tus datos siguen disponibles. Escribe 5 para reintentar o 3 para editar.")
 
         elif text in ["3", "editar"]:
             state["step"] = "editar"
@@ -370,7 +415,7 @@ async def telegram_webhook(request: Request):
                 enviar_mensaje(chat_id, "No pude convertir la fecha. Verifica que tenga formato válido o edítala manualmente (opción 3).")
             mostrar_resumen_y_opciones(chat_id)
         else:
-            enviar_mensaje(chat_id, "Por favor responde con un numerito:\n1) Guardar\n2) Guardar y crear PDF\n3) Editar\n4) Alternar formato de fecha\nO escribe /cancelar si ya no quieres guardarlo.")
+            enviar_mensaje(chat_id, "Por favor responde con un numerito:\n1) Guardar\n2) Guardar y crear PDF\n3) Editar\n4) Alternar formato de fecha\n5) Solo PDF de prueba (sin guardar)\nO escribe /cancelar si ya no quieres guardarlo.")
         return {"status": "ok"}
 
     # Procesar datos editados

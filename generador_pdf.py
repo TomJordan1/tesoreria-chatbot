@@ -14,6 +14,12 @@ def generar_comprobante_pdf(datos: dict, ruta_salida: str, ruta_imagen: str = No
     with open(ruta_plantilla, "r", encoding="utf-8") as archivo:
         html_texto = archivo.read()
 
+    aviso_prueba = (
+        "<p align=\"center\"><strong>PRUEBA - SIN REGISTRO EN EXCEL</strong></p>"
+        if datos.get("solo_pdf") else ""
+    )
+    html_texto = html_texto.replace("{{aviso_prueba}}", aviso_prueba)
+
     # Campos requeridos a inyectar
     campos_requeridos = [
         "codigo", "fecha", "nro_operacion_dia", "concepto", "tipo", 

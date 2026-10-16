@@ -177,11 +177,57 @@ class FlujoRegistro(unittest.TestCase):
         self.guardar.assert_called_once()
         self.assertNotIn("1", main.user_states)
 
+    def test_solo_pdf_no_consulta_ni_escribe_excel(self):
+        originales = main.user_states["1"]["datos_procesados"].copy()
+        with patch.object(main, "enviar_comprobante_pdf") as pdf:
+            self.enviar("5")
+        self.saldo.assert_not_called()
+        self.guardar.assert_not_called()
+        datos = pdf.call_args.args[2]
+        self.assertTrue(datos["solo_pdf"])
+        self.assertTrue(datos["codigo"].startswith("PRUEBA_"))
+        self.assertEqual(datos["egreso_final"], 25.5)
+        self.assertEqual(datos["saldo"], "No calculado (prueba)")
+        self.assertEqual(main.user_states["1"]["datos_procesados"], originales)
 
+    def test_fallo_solo_pdf_conserva_datos_para_reintentar(self):
+        with patch.object(main, "enviar_comprobante_pdf", side_effect=RuntimeError()):
+            self.enviar("5")
+        self.guardar.assert_not_called()
+        self.assertEqual(main.user_states["1"]["step"], "confirmar")
+        self.assertIn("No se guardó nada en Excel", self.mensajes.call_args.args[1])
 
+    def test_solo_pdf_valida_datos(self):
+        main.user_states["1"]["datos_procesados"]["ing_eg"] = "No determinado"
+        with patch.object(main, "enviar_comprobante_pdf") as pdf:
+            self.enviar("5")
+        pdf.assert_not_called()
+        self.guardar.assert_not_called()
 
+    def test_continuar_sin_saldo_para_probar(self):
+        for paso in ("consultar_saldo", "pedir_saldo_base"):
+            with self.subTest(paso=paso):
+                main.user_states["1"] = dict(step=paso, caption="Materiales para el proyecto", file_id="foto")
+                self.enviar("/solo_pdf")
+                self.assertEqual(main.user_states["1"]["step"], "esperar_lectura")
+        self.saldo.assert_not_called()
+        self.guardar.assert_not_called()
 
+    def test_guardar_despues_de_prueba_pide_saldo_si_excel_esta_vacio(self):
+        del main.user_states["1"]["saldo_previo"]
+        self.saldo.return_value = None
+        self.enviar("1")
+        self.guardar.assert_not_called()
+        self.assertEqual(main.user_states["1"]["step"], "pedir_saldo_base")
+        self.enviar("100")
+        self.assertEqual(main.user_states["1"]["step"], "confirmar")
+        self.assertEqual(main.user_states["1"]["saldo_previo"], 100)
 
+    def test_volver_a_solo_pdf_conserva_datos_ya_procesados(self):
+        main.user_states["1"]["step"] = "pedir_saldo_base"
+        self.enviar("/solo_pdf")
+        self.assertEqual(main.user_states["1"]["step"], "confirmar")
+        self.assertEqual(main.user_states["1"]["datos_procesados"], datos_validos())
 
     def test_escritura_incierta_no_se_repite(self):
         self.guardar.side_effect = TimeoutError()
@@ -212,6 +258,19 @@ class FlujoRegistro(unittest.TestCase):
                     self.assertIn("ya está guardada en Excel", self.mensajes.call_args.args[1])
 
 
+class PlantillaPDF(unittest.TestCase):
+    def test_marca_de_prueba_solo_en_exportaciones_sin_registro(self):
+        fpdf = Mock()
+        with patch.dict(sys.modules, {"fpdf": types.SimpleNamespace(FPDF=fpdf)}):
+            spec = importlib.util.spec_from_file_location("generador_pdf_prueba", RAIZ / "generador_pdf.py")
+            generador = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(generador)
+        for prueba in (True, False):
+            with self.subTest(prueba=prueba):
+                generador.generar_comprobante_pdf({**datos_validos(), "solo_pdf": prueba}, "ignorado.pdf")
+                html = fpdf.return_value.write_html.call_args.args[0]
+                self.assertEqual("PRUEBA - SIN REGISTRO EN EXCEL" in html, prueba)
+                self.assertNotIn("{{aviso_prueba}}", html)
 
 
 if __name__ == "__main__":
