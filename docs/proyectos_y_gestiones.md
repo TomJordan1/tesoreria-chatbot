@@ -345,4 +345,4 @@ Groq es independiente del modo de proyectos. No se borran archivos ni movimiento
 
 - [Descarga de archivos: admite permisos de aplicación](https://learn.microsoft.com/en-us/graph/api/driveitem-get-content?view=graph-rest-1.0).
 - [Filas de tabla: comprobar permisos admitidos](https://learn.microsoft.com/en-us/graph/api/table-list-rows?view=graph-rest-1.0).
-- [Agregar filas](https://learn.microsoft.com/en-us/graph/api/table-post-rows?view=graph-rest-1.0).
+- [Agregar filas](https://learn.microsoft.com/en-us/graph/api/tablerowcollection-add?view=graph-rest-1.0).

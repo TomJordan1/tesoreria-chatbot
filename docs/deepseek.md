@@ -62,3 +62,5 @@ Los valores históricos del código pueden estar retirados: no los tomes como ca
 - [Imágenes con Chat Completions](https://api-docs.deepseek.com/guides/vision/).
 - [Desactivar thinking mediante extra_body](https://api-docs.deepseek.com/guides/thinking_mode/).
 - [Listado de modelos y capacidades](https://api-docs.deepseek.com/api/list-models/).
+
+Para conectar varios proyectos, sigue [proyectos y gestiones](proyectos_y_gestiones.md). Elegir proveedor de IA y activar el catálogo son configuraciones independientes.
