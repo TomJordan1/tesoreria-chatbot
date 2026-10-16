@@ -23,7 +23,7 @@ Se aceptan los tiempos de arranque tras el reposo de Render y los límites de us
 La arquitectura actual no requiere una base de datos de sesiones, colas externas ni servicios de pago adicionales. Las mejoras deben priorizar la integridad de los registros y mantener este alcance.
 
 ## ✨ Características
-* **Acceso desde Excel:** Solo los IDs activos de la tabla `USUARIOS_AUTORIZADOS` pueden usar el bot. `/mi_id` es público para solicitar el alta. No requiere variables nuevas en Render; [consulta la guía de configuración](docs/control_acceso.md) antes de habilitar esta versión.
+* **Acceso desde Excel:** Solo los IDs activos de la tabla `USUARIOS_AUTORIZADOS` pueden usar el bot. `/mi_id` es público para solicitar el alta. Se usa un Excel separado configurado con `MS_USUARIOS_ITEM_ID`; [consulta la guía de configuración](docs/control_acceso.md) antes de habilitar esta versión.
 * **Procesamiento de Imágenes con IA:** Pipeline de dos pasos: (1) un modelo de visión transcribe el texto del comprobante, y (2) un modelo de texto interpreta y estructura los datos en un esquema JSON. Los modelos son configurables desde un bloque centralizado en `servicios.py`.
 * **Flujo Conversacional Interactivo:** Sistema dinámico que permite al usuario confirmar los datos extraídos, editarlos manualmente en bloque mediante un formato estructurado con signos de interrogación (`?`) o cancelar la operación antes de registrar.
 * **Validación antes de Guardar:** El monto debe ser numérico, finito y mayor que cero; Ing/Eg debe ser Ingreso o Egreso. Los datos inválidos se conservan para corregirlos con la opción 3.

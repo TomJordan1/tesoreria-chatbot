@@ -264,12 +264,24 @@ class FlujoRegistro(unittest.TestCase):
 class ListaUsuarios(unittest.TestCase):
     def setUp(self):
         servicios._cache_usuarios.update(ids=set(), vence=0)
+        self.enterContext(patch.object(servicios, "MS_ITEM_ID", "excel_contable"))
+        self.enterContext(patch.object(servicios, "MS_USUARIOS_ITEM_ID", "excel_usuarios"))
 
     def consultar(self, filas):
         with patch.object(servicios, "obtener_token_ms", return_value="token"), patch.object(servicios.requests, "get", return_value=Mock(json=lambda: {"values": filas})) as consulta:
             resultado = servicios.obtener_usuarios_autorizados()
             self.assertIn("/tables/USUARIOS_AUTORIZADOS/range", consulta.call_args.args[0])
+            self.assertIn("/items/excel_usuarios/", consulta.call_args.args[0])
+            self.assertNotIn("/items/excel_contable/", consulta.call_args.args[0])
             return resultado
+
+    def test_exige_archivo_separado_sin_recurrir_al_contable(self):
+        for identificador in (None, "", "excel_contable"):
+            with self.subTest(identificador=identificador), patch.object(servicios, "MS_USUARIOS_ITEM_ID", identificador), patch.object(servicios, "obtener_token_ms") as token, patch.object(servicios.requests, "get") as consulta:
+                with self.assertRaises(ValueError):
+                    servicios.obtener_usuarios_autorizados()
+                token.assert_not_called()
+                consulta.assert_not_called()
 
     def test_lee_columnas_por_nombre_y_solo_habilita_activos(self):
         self.assertEqual(self.consultar([

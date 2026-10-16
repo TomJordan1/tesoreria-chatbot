@@ -40,6 +40,7 @@ MS_CLIENT_SECRET=tu_client_secret_de_microsoft
 MS_SITE_ID=tu_site_id_de_sharepoint
 MS_DRIVE_ID=tu_drive_id_de_sharepoint
 MS_ITEM_ID=tu_item_id_del_excel
+MS_USUARIOS_ITEM_ID=tu_item_id_del_excel_de_usuarios
 MS_TABLE_NAME=REGISTRODIARIO3
 FORMATO_FECHA_EXCEL=PE
 ```
@@ -102,7 +103,7 @@ Si todo salió bien, Telegram responderá:
 
 ### ✅ Listo
 
-Antes de probar registros, configura la tabla de usuarios siguiendo [Control de acceso desde Excel](control_acceso.md). Mientras no figure tu Telegram ID como activo, solo podrás usar `/mi_id`. La lista vive en el mismo Excel configurado y no requiere variables adicionales.
+Antes de probar registros, configura la tabla de usuarios siguiendo [Control de acceso desde Excel](control_acceso.md). Mientras no figure tu Telegram ID como activo, solo podrás usar `/mi_id`. La lista vive en otro Excel de la misma biblioteca, identificado por `MS_USUARIOS_ITEM_ID`. Conserva `MS_ITEM_ID` para el archivo contable.
 
 Ahora puedes enviar fotos o mensajes a tu bot desde Telegram y el servidor local procesará las solicitudes en tiempo real.
 

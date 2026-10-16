@@ -40,6 +40,7 @@ MS_CLIENT_SECRET=tu_client_secret_de_microsoft
 MS_SITE_ID=tu_site_id_de_sharepoint
 MS_DRIVE_ID=tu_drive_id_de_sharepoint
 MS_ITEM_ID=tu_item_id_del_excel
+MS_USUARIOS_ITEM_ID=tu_item_id_del_excel_de_usuarios
 MS_TABLE_NAME=REGISTRODIARIO3
 FORMATO_FECHA_EXCEL=PE
 ```
@@ -88,6 +89,7 @@ MS_CLIENT_SECRET=tu_client_secret_de_microsoft
 MS_SITE_ID=tu_site_id_de_sharepoint
 MS_DRIVE_ID=tu_drive_id_de_sharepoint
 MS_ITEM_ID=tu_item_id_del_excel
+MS_USUARIOS_ITEM_ID=tu_item_id_del_excel_de_usuarios
 MS_TABLE_NAME=REGISTRODIARIO3
 FORMATO_FECHA_EXCEL=PE
 ```
@@ -114,6 +116,6 @@ Si todo salió correctamente, Telegram responderá:
 
 ### ✅ Listo
 
-Antes de habilitar esta versión, prepara la tabla `USUARIOS_AUTORIZADOS` en el mismo Excel de SharePoint. Sigue [Control de acceso desde Excel](control_acceso.md) para dar de alta a la primera persona con `/mi_id`. No se agregan variables de entorno en Render. Sin usuarios habilitados, solo funciona `/mi_id`; las altas y bajas se reflejan al renovar la lista, hasta dos minutos después.
+Antes de habilitar esta versión, prepara la tabla `USUARIOS_AUTORIZADOS` en otro Excel de la misma biblioteca de SharePoint. Sigue [Control de acceso desde Excel](control_acceso.md) para dar de alta a la primera persona con `/mi_id`. Configura `MS_USUARIOS_ITEM_ID` en Render con el ID del archivo de usuarios. Sin usuarios habilitados, solo funciona `/mi_id`; las altas y bajas se reflejan al renovar la lista, hasta dos minutos después.
 
 Ahora puedes enviar fotos o mensajes a tu bot desde Telegram y el servidor procesará las solicitudes.

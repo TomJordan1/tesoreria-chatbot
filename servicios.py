@@ -50,9 +50,10 @@ MS_CLIENT_SECRET = os.getenv("MS_CLIENT_SECRET")
 MS_SITE_ID = os.getenv("MS_SITE_ID")
 MS_DRIVE_ID = os.getenv("MS_DRIVE_ID")
 MS_ITEM_ID = os.getenv("MS_ITEM_ID")
+MS_USUARIOS_ITEM_ID = os.getenv("MS_USUARIOS_ITEM_ID")
 MS_TABLE_NAME = os.getenv("MS_TABLE_NAME", "TablaFinanzas")
 
-# Tabla adicional en el mismo archivo Excel; no requiere variables nuevas.
+# Lista de acceso en un archivo distinto, dentro de la misma biblioteca.
 TABLA_USUARIOS = "USUARIOS_AUTORIZADOS"
 _cache_usuarios = {"ids": set(), "vence": 0.0}
 
@@ -96,11 +97,13 @@ def _normalizar_telegram_id(valor):
 
 
 def obtener_usuarios_autorizados():
-    """Lee la tabla de acceso del mismo Excel, incluidos sus encabezados."""
+    """Lee la tabla de acceso de un Excel separado del registro contable."""
+    if not MS_USUARIOS_ITEM_ID or MS_USUARIOS_ITEM_ID == MS_ITEM_ID:
+        raise ValueError("MS_USUARIOS_ITEM_ID debe identificar un Excel distinto del contable.")
     token = obtener_token_ms()
     if not token:
         raise ValueError("No se pudo autenticar para consultar los usuarios.")
-    url = f"https://graph.microsoft.com/v1.0/sites/{MS_SITE_ID}/drives/{MS_DRIVE_ID}/items/{MS_ITEM_ID}/workbook/tables/{TABLA_USUARIOS}/range"
+    url = f"https://graph.microsoft.com/v1.0/sites/{MS_SITE_ID}/drives/{MS_DRIVE_ID}/items/{MS_USUARIOS_ITEM_ID}/workbook/tables/{TABLA_USUARIOS}/range"
     respuesta = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=15)
     respuesta.raise_for_status()
     filas = respuesta.json()["values"]

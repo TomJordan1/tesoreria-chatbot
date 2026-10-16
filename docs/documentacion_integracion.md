@@ -42,7 +42,7 @@ Ejecutar `python -m unittest discover -s tests -v` desde la raíz. Las pruebas u
 
 ### Acceso mediante lista de usuarios en Excel
 
-Se agrega la tabla `USUARIOS_AUTORIZADOS` al mismo libro configurado, con columnas `telegram_id`, `nombre` y `activo`. El nombre de tabla está definido en `servicios.py`; no se agregan variables de entorno ni dependencias. El permiso se comprueba antes de procesar fotos, comandos, estados, IA, registros o PDFs, usando `message.from.id` y no el ID del chat. `/mi_id` es público, no consulta Excel y conserva la sesión actual; las personas no autorizadas reciben el mensaje de Toribio acordado.
+La tabla `USUARIOS_AUTORIZADOS` se ubica en un Excel separado, con columnas `telegram_id`, `nombre` y `activo`. `MS_USUARIOS_ITEM_ID` identifica ese archivo; `MS_ITEM_ID` conserva el destino contable. Se reutilizan sitio, biblioteca y credenciales. El nombre de tabla está definido en `servicios.py` y no se agregan dependencias. Si falta el ID de usuarios o coincide con el contable, se bloquea el acceso, sin recurrir al archivo contable. El permiso se comprueba antes de procesar fotos, comandos, estados, IA, registros o PDFs, usando `message.from.id` y no el ID del chat. `/mi_id` es público, no consulta Excel y conserva la sesión actual; las personas no autorizadas reciben el mensaje de Toribio acordado.
 
 La lista se cachea dos minutos en memoria. Al vencer, un fallo descarta el acceso anterior y establece 30 segundos antes de reintentar, manteniendo `/mi_id` disponible. Una fila inactiva prevalece ante duplicados. Las pruebas cubren lectura por encabezados, bajas y expiración, fallos de consulta, acceso público al ID y bloqueo del resto del flujo para desconocidos.
 
