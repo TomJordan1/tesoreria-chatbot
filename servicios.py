@@ -2,6 +2,7 @@ import os
 import json
 import re
 import base64
+import math
 import requests
 from openai import OpenAI
 from datetime import datetime, timezone, timedelta
@@ -75,11 +76,38 @@ def obtener_token_ms():
         print(f"Error obteniendo token: {result.get('error')}")
         return None
 
+class ErrorConsultaSaldo(Exception):
+    """No fue posible consultar un saldo confiable en Excel."""
+
+
+class ErrorValidacionOperacion(ValueError):
+    """La operación requiere corrección antes de registrarse."""
+
+
+def validar_operacion(datos: dict) -> tuple:
+    """Valida monto y clasificación sin modificar los datos ni consultar servicios."""
+    try:
+        if isinstance(datos.get("monto"), bool):
+            raise ValueError()
+        monto = float(datos.get("monto"))
+    except (ValueError, TypeError, OverflowError):
+        raise ErrorValidacionOperacion("El monto debe ser un número válido con punto decimal (ej. 150.50).")
+    if not math.isfinite(monto) or monto <= 0:
+        raise ErrorValidacionOperacion("El monto debe ser mayor que cero y finito (ej. 150.50).")
+    clasificacion = datos.get("ing_eg")
+    if not isinstance(clasificacion, str) or clasificacion.strip().lower() not in ("ingreso", "egreso"):
+        raise ErrorValidacionOperacion("El campo Ing/Eg debe indicar Ingreso o Egreso.")
+    return monto, clasificacion.strip().lower()
+
+
 def obtener_saldo_actual():
     """Consulta la última fila de la tabla en Excel para obtener el último saldo."""
-    token = obtener_token_ms()
+    try:
+        token = obtener_token_ms()
+    except Exception as e:
+        raise ErrorConsultaSaldo("No se pudo autenticar con Microsoft.") from e
     if not token:
-        return None
+        raise ErrorConsultaSaldo("No se pudo autenticar con Microsoft.")
         
     headers = {
         "Authorization": f"Bearer {token}",
@@ -93,10 +121,12 @@ def obtener_saldo_actual():
         response = requests.get(url, headers=headers, timeout=15)
         if response.status_code != 200:
             print(f"Error consultando Excel: {response.text}")
-            return None
+            raise ErrorConsultaSaldo("Excel no respondió correctamente.")
             
         data = response.json()
-        filas = data.get("value", [])
+        filas = data["value"]
+        if not isinstance(filas, list):
+            raise ErrorConsultaSaldo("La respuesta de Excel no contiene filas válidas.")
         
         if not filas:
             return None # Tabla vacía
@@ -109,14 +139,18 @@ def obtener_saldo_actual():
                 saldo_str = str(valores[12]).replace(",", "").strip()
                 if saldo_str and saldo_str != "-" and saldo_str != "":
                     try:
-                        return float(saldo_str)
+                        saldo = float(saldo_str)
+                        if math.isfinite(saldo):
+                            return saldo
                     except ValueError:
                         continue
                         
-        return None # Si llegamos aquí, no había ningún saldo válido
+        if any(any(valor not in (None, "", "-") for valor in fila.get("values", [[]])[0]) for fila in filas):
+            raise ErrorConsultaSaldo("Hay registros en Excel, pero no un saldo válido.")
+        return None # Solo filas vacías: todavía no hay un saldo inicial
     except Exception as e:
         print(f"Excepción obteniendo saldo actual: {e}")
-        return None
+        raise ErrorConsultaSaldo("No se pudo consultar el saldo de Excel.") from e
 
 def _extraer_texto_de_imagen(image_bytes: bytes) -> str:
     """Paso 1: Usa el modelo multimodal solo para transcribir el texto de la imagen."""
@@ -314,19 +348,15 @@ def calcular_codigo_y_nro(fecha_str: str, formato_usa: bool = False) -> tuple:
 
 def guardar_en_excel(datos: dict, saldo_previo: float, formato_usa: bool = False) -> dict:
     """Guarda directamente en el Excel de SharePoint usando Graph API."""
+    monto_float, clasificacion = validar_operacion(datos)
     # El formato final se determina por: variable de entorno OR toggle del usuario
     usar_usa = formato_usa or FORMATO_FECHA_EXCEL == "US"
     codigo, nro_operacion_dia = calcular_codigo_y_nro(datos["fecha"], usar_usa)
     
-    try:
-        monto_float = float(datos["monto"])
-    except (ValueError, TypeError):
-        monto_float = 0.0
-
     ingreso_val = 0
     egreso_val = 0
     
-    if datos["ing_eg"].lower() == "ingreso":
+    if clasificacion == "ingreso":
         ingreso_val = monto_float
         nuevo_saldo = saldo_previo + monto_float
     else:
@@ -345,7 +375,7 @@ def guardar_en_excel(datos: dict, saldo_previo: float, formato_usa: bool = False
         str(nro_operacion_dia),
         datos["concepto"],
         datos["tipo"],
-        datos["ing_eg"],
+        clasificacion.capitalize(),
         datos["motivo"],
         datos["acreedor"],
         datos["deudor"],

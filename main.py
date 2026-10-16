@@ -1,12 +1,14 @@
 import os
 import requests
 import traceback
+import math
 from fastapi import FastAPI, Request
 from dotenv import load_dotenv
 
 load_dotenv()
 
 from servicios import obtener_saldo_actual, extraer_datos_recibo_llm, guardar_en_excel
+from servicios import ErrorConsultaSaldo, ErrorValidacionOperacion, validar_operacion
 from generador_pdf import generar_comprobante_pdf
 
 app = FastAPI()
@@ -48,6 +50,64 @@ def mostrar_resumen_y_opciones(chat_id):
         f"O envía /cancelar para abortar"
     )
     enviar_mensaje(chat_id, resumen)
+
+def preparar_registro(chat_id):
+    """Consulta el saldo antes de continuar; conserva la foto si Excel falla."""
+    try:
+        saldo_actual = obtener_saldo_actual()
+    except ErrorConsultaSaldo:
+        user_states[chat_id]["step"] = "consultar_saldo"
+        enviar_mensaje(chat_id, "¡Chispas! No pude consultar el saldo de Excel. Conservé tu foto. Escribe 1 para reintentar o /cancelar para salir.")
+        return
+    if saldo_actual is None:
+        user_states[chat_id]["step"] = "pedir_saldo_base"
+        enviar_mensaje(chat_id, "¡Hola! Veo que es el primer registro en la base de datos.\nPara calcular los saldos correctamente, por favor dime: ¿cuál es el <b>Saldo Base / Inicial</b> en caja? (ej. 1500.50)")
+        return
+
+    user_states[chat_id]["saldo_previo"] = saldo_actual
+
+    if user_states[chat_id]["caption"]:
+        user_states[chat_id]["contexto_texto"] = user_states[chat_id]["caption"]
+        user_states[chat_id]["step"] = "esperar_lectura"
+        enviar_mensaje(chat_id, "Recibí la foto y tu explicación.\n\nEscribe <b>'1'</b> para empezar a procesar los datos y mostrarte el resumen.\n\n❓ <i>Si no entiendes qué está pasando o quieres ver la guía, escribe <b>/ayuda</b></i>")
+    else:
+        user_states[chat_id]["step"] = "elegir_metodo"
+        enviar_mensaje(chat_id, "¡Recibido! ¿Cómo me cuentas el resto de los detalles?\n\n✍️ Escribe <b>'manual'</b> para que te pregunte paso a paso.\n🗣️ O si prefieres, escríbeme <b>toda la historia junta aquí</b>.\n\n❓ <i>Si no entiendes qué está pasando o quieres ver la guía, escribe <b>/ayuda</b></i>")
+
+
+def enviar_comprobante_pdf(chat_id, state, datos_finales):
+    """Genera y envía el respaldo; siempre intenta limpiar los archivos temporales."""
+    codigo_asignado = datos_finales["codigo"]
+    nombre_pdf = f"comprobante_{codigo_asignado}.pdf"
+    nombre_img_temporal = f"img_temp_{codigo_asignado}.jpg"
+    try:
+        file_info = requests.get(f"{TELEGRAM_API_URL}/getFile?file_id={state['file_id']}", timeout=10).json()
+        if not file_info.get("ok"):
+            raise RuntimeError("No se pudo recuperar la imagen de Telegram")
+        file_path = file_info["result"]["file_path"]
+        respuesta_imagen = requests.get(f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}", timeout=15)
+        respuesta_imagen.raise_for_status()
+        with open(nombre_img_temporal, "wb") as f_img:
+            f_img.write(respuesta_imagen.content)
+        generar_comprobante_pdf(datos_finales, nombre_pdf, nombre_img_temporal)
+        with open(nombre_pdf, 'rb') as archivo:
+            respuesta_pdf = requests.post(
+                f"{TELEGRAM_API_URL}/sendDocument",
+                data={"chat_id": chat_id, "caption": f"📄 Respaldo de tu tesorería - Código: {codigo_asignado}"},
+                files={"document": archivo},
+                timeout=30
+            )
+        respuesta_pdf.raise_for_status()
+        if not respuesta_pdf.json().get("ok"):
+            raise RuntimeError("Telegram no confirmó el envío del PDF")
+    finally:
+        for ruta in (nombre_pdf, nombre_img_temporal):
+            if os.path.exists(ruta):
+                try:
+                    os.remove(ruta)
+                except OSError:
+                    traceback.print_exc()
+
 
 def procesar_imagen_y_confirmar(chat_id):
     state = user_states.get(chat_id)
@@ -118,21 +178,7 @@ async def telegram_webhook(request: Request):
             "contexto_manual": {}
         }
         
-        saldo_actual = obtener_saldo_actual()
-        if saldo_actual is None:
-            user_states[chat_id]["step"] = "pedir_saldo_base"
-            enviar_mensaje(chat_id, "¡Hola! Veo que es el primer registro en la base de datos.\nPara calcular los saldos correctamente, por favor dime: ¿cuál es el <b>Saldo Base / Inicial</b> en caja? (ej. 1500.50)")
-            return {"status": "ok"}
-        
-        user_states[chat_id]["saldo_previo"] = saldo_actual
-
-        if user_states[chat_id]["caption"]:
-            user_states[chat_id]["contexto_texto"] = user_states[chat_id]["caption"]
-            user_states[chat_id]["step"] = "esperar_lectura"
-            enviar_mensaje(chat_id, "Recibí la foto y tu explicación.\n\nEscribe <b>'1'</b> para empezar a procesar los datos y mostrarte el resumen.\n\n❓ <i>Si no entiendes qué está pasando o quieres ver la guía, escribe <b>/ayuda</b></i>")
-        else:
-            user_states[chat_id]["step"] = "elegir_metodo"
-            enviar_mensaje(chat_id, "¡Recibido! ¿Cómo me cuentas el resto de los detalles?\n\n✍️ Escribe <b>'manual'</b> para que te pregunte paso a paso.\n🗣️ O si prefieres, escríbeme <b>toda la historia junta aquí</b>.\n\n❓ <i>Si no entiendes qué está pasando o quieres ver la guía, escribe <b>/ayuda</b></i>")
+        preparar_registro(chat_id)
         return {"status": "ok"}
 
     # --- 2. MANEJO DE TEXTO ---
@@ -178,9 +224,23 @@ async def telegram_webhook(request: Request):
         enviar_mensaje(chat_id, "¡Hola! Soy Toribot, tu asistente de tesorería. Envíame la foto de tu comprobante o captura para empezar.\n\n💡 <i>Tip: Si me pones toda la explicación en la leyenda de la foto, vamos más rápido.</i>\n🛑 <i>Tip: Escribe <b>/cancelar</b> en cualquier momento si quieres abortar y empezar de nuevo.</i>\n❓ <i>Tip: Escribe <b>/ayuda</b> para ver mi infografía explicativa.</i>")
         return {"status": "ok"}
 
+    if state.get("step") == "verificar_guardado":
+        enviar_mensaje(chat_id, "El guardado anterior está pendiente de verificación en Excel. Revísalo con el área de TIC antes de repetirlo; luego usa /cancelar para salir.")
+        return {"status": "ok"}
+
+    if state.get("step") == "consultar_saldo":
+        if text == "1":
+            preparar_registro(chat_id)
+        else:
+            enviar_mensaje(chat_id, "Escribe 1 para reintentar la consulta de saldo o /cancelar para salir.")
+        return {"status": "ok"}
+
     if state.get("step") == "pedir_saldo_base":
         try:
-            state["saldo_previo"] = float(text.replace(",", ""))
+            saldo_base = float(text.replace(",", ""))
+            if not math.isfinite(saldo_base):
+                raise ValueError("Saldo no finito")
+            state["saldo_previo"] = saldo_base
             if state["caption"]:
                 state["contexto_texto"] = state["caption"]
                 state["step"] = "esperar_lectura"
@@ -235,54 +295,46 @@ async def telegram_webhook(request: Request):
     # Bloque: Restauración del Modo de Edición
     if state.get("step") == "confirmar":
         if text in ["1", "2"]:
-            nombre_pdf = None
-            nombre_img_temporal = None
             try:
-                # Re-consultar saldo actualizado justo antes de guardar
+                validar_operacion(state["datos_procesados"])
+            except ErrorValidacionOperacion as e:
+                enviar_mensaje(chat_id, f"No guardé la operación. {e} Usa la opción 3 para corregir los datos y vuelve a confirmar.")
+                return {"status": "ok"}
+
+            try:
                 saldo_actual = obtener_saldo_actual()
-                if saldo_actual is not None:
-                    state["saldo_previo"] = saldo_actual
-                
+            except ErrorConsultaSaldo:
+                enviar_mensaje(chat_id, "No pude actualizar el saldo de Excel. No guardé la operación y tus datos siguen disponibles. Escribe 1 para guardar o 2 para guardar con PDF cuando quieras reintentar.")
+                return {"status": "ok"}
+            if saldo_actual is not None:
+                state["saldo_previo"] = saldo_actual
+
+            try:
                 datos_finales = guardar_en_excel(state["datos_procesados"], state["saldo_previo"], state.get("fecha_usa", False))
-                codigo_asignado = datos_finales["codigo"]
-                
+            except ErrorValidacionOperacion as e:
+                enviar_mensaje(chat_id, f"No guardé la operación. {e} Usa la opción 3 para corregirla.")
+                return {"status": "ok"}
+            except Exception:
+                traceback.print_exc()
+                # Una escritura con timeout puede haber llegado a Excel.
+                state["step"] = "verificar_guardado"
+                enviar_mensaje(chat_id, "No pude confirmar el guardado. Antes de registrar otra vez, pide al área de TIC que revise si la operación aparece en Excel para evitar duplicados. Tus datos siguen en esta sesión; usa /cancelar cuando termines de verificar.")
+                return {"status": "ok"}
+
+            codigo_asignado = datos_finales["codigo"]
+            # Excel ya confirmó: ningún fallo posterior debe permitir volver a insertar.
+            user_states.pop(chat_id, None)
+            try:
                 if text == "1":
                     enviar_mensaje(chat_id, f"¡Muuucho éxito! Operación guardada en Excel bajo el código <b>{codigo_asignado}</b>.\nEnvíame otra foto para registrar un nuevo movimiento.")
-                elif text == "2":
+                else:
                     enviar_mensaje(chat_id, f"Operación <b>{codigo_asignado}</b> guardada. Generando tu PDF...")
-                    nombre_pdf = f"comprobante_{codigo_asignado}.pdf"
-                    nombre_img_temporal = f"img_temp_{codigo_asignado}.jpg"
-                    
-                    file_info = requests.get(f"{TELEGRAM_API_URL}/getFile?file_id={state['file_id']}", timeout=10).json()
-                    if not file_info.get("ok"):
-                        enviar_mensaje(chat_id, "No pude recuperar la imagen para el PDF. El comprobante ya fue guardado, pero no puedo generar el respaldo visual.")
-                        user_states.pop(chat_id, None)
-                        return {"status": "ok"}
-                    file_path = file_info["result"]["file_path"]
-                    image_bytes = requests.get(f"https://api.telegram.org/file/bot{TELEGRAM_TOKEN}/{file_path}", timeout=15).content
-                    
-                    with open(nombre_img_temporal, "wb") as f_img:
-                        f_img.write(image_bytes)
-
-                    generar_comprobante_pdf(datos_finales, nombre_pdf, nombre_img_temporal)
-                    
-                    with open(nombre_pdf, 'rb') as archivo:
-                        requests.post(
-                            f"{TELEGRAM_API_URL}/sendDocument",
-                            data={"chat_id": chat_id, "caption": f"📄 Respaldo de tu tesorería - Código: {codigo_asignado}"},
-                            files={"document": archivo}
-                        )
-
-            except Exception as e:
+                    enviar_comprobante_pdf(chat_id, state, datos_finales)
+            except Exception:
                 traceback.print_exc()
-                enviar_mensaje(chat_id, "¡Chispas, tuve un problema tratando de anotar esto en el Excel. Por favor, contacta con el área de TIC para que vean qué rayos sucedió acá.")
-            finally:
-                if nombre_pdf and os.path.exists(nombre_pdf):
-                    os.remove(nombre_pdf)
-                if nombre_img_temporal and os.path.exists(nombre_img_temporal):
-                    os.remove(nombre_img_temporal)
-                user_states.pop(chat_id, None)
-                
+                detalle = "falló la generación o el envío del PDF" if text == "2" else "falló el envío de la confirmación"
+                enviar_mensaje(chat_id, f"La operación <b>{codigo_asignado}</b> ya está guardada en Excel, pero {detalle}. No vuelvas a registrarla. Contacta al área de TIC si necesitas el respaldo.")
+
         elif text in ["3", "editar"]:
             state["step"] = "editar"
             d = state["datos_procesados"]
