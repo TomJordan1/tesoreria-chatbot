@@ -56,7 +56,7 @@ Las sesiones se guardan únicamente en memoria. Si Render suspende o reinicia el
 
 No se agregaron variables de entorno ni dependencias para las correcciones de validación y manejo de errores descritas en la documentación de integración.
 
-Para experimentar sin escribir en SharePoint, envía una foto, completa los datos y elige **5) Solo generar PDF de prueba (sin guardar)** en el resumen. Si Excel está vacío o falla la consulta inicial de saldo, usa `/solo_pdf` para continuar sin saldo inicial. El PDF se marca como prueba y la sesión permanece abierta para editar o cancelar. Las opciones 1 y 2 sí guardan registros reales.
+Para experimentar sin escribir en SharePoint, envía una foto, completa los datos y elige **5) Generar PDF sin registrar en Excel** en el resumen. Si Excel está vacío o falla la consulta inicial de saldo, usa `/solo_pdf` para continuar sin saldo inicial. El PDF se marca como prueba y la sesión permanece abierta para editar o cancelar. Las opciones 1 y 2 sí guardan registros reales.
 
 ### 1. Crear Web Service
 

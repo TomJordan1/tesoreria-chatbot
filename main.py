@@ -51,11 +51,11 @@ def mostrar_resumen_y_opciones(chat_id):
         f"<b>Estado:</b> {d.get('estado')}\n"
         f"<b>Monto:</b> S/ {d.get('monto')}\n\n"
         f"¿Qué deseas hacer?\n"
-        f"1) Guardar en la base de datos\n"
-        f"2) Guardar y generar PDF\n"
+        f"1) Registrar movimiento en Excel\n"
+        f"2) Registrar movimiento en Excel y generar PDF\n"
         f"3) Editar datos\n"
         f"4) Alternar formato de fecha (PE ↔ USA)\n"
-        f"5) Solo generar PDF de prueba (sin guardar)\n"
+        f"5) Generar PDF sin registrar en Excel\n"
         f"O envía /cancelar para abortar"
     )
     enviar_mensaje(chat_id, resumen)
@@ -434,7 +434,7 @@ async def telegram_webhook(request: Request):
                 enviar_mensaje(chat_id, "No pude convertir la fecha. Verifica que tenga formato válido o edítala manualmente (opción 3).")
             mostrar_resumen_y_opciones(chat_id)
         else:
-            enviar_mensaje(chat_id, "Por favor responde con un numerito:\n1) Guardar\n2) Guardar y crear PDF\n3) Editar\n4) Alternar formato de fecha\n5) Solo PDF de prueba (sin guardar)\nO escribe /cancelar si ya no quieres guardarlo.")
+            enviar_mensaje(chat_id, "Por favor responde con un numerito:\n1) Registrar movimiento en Excel\n2) Registrar movimiento en Excel y generar PDF\n3) Editar\n4) Alternar formato de fecha\n5) Generar PDF sin registrar en Excel\nO escribe /cancelar si ya no quieres guardarlo.")
         return {"status": "ok"}
 
     # Procesar datos editados

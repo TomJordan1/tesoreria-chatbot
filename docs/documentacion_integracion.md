@@ -30,7 +30,9 @@ El bot se utiliza por un grupo reducido, de forma ocasional. Se usan el plan gra
 
 ### Exportar PDF sin registrar (opción 5)
 
-La opción **5) Solo generar PDF de prueba (sin guardar)** del resumen genera y envía el comprobante sin consultar saldos, calcular correlativos ni insertar filas en Excel durante la exportación. Las opciones 1 y 2 conservan el guardado habitual. Se valida el monto y la clasificación también para exportar.
+El menú distingue **1) Registrar movimiento en Excel**, **2) Registrar movimiento en Excel y generar PDF** y **5) Generar PDF sin registrar en Excel**. Se mantiene la numeración y el comportamiento de todas las opciones. Este ajuste solo cambia las etiquetas del menú: conserva los campos y la plantilla actuales, incluido el aviso de prueba del PDF sin registro. No incorpora un formato de informe de gastos por proyecto ni modifica Excel.
+
+La opción **5) Generar PDF sin registrar en Excel** del resumen genera y envía el comprobante sin consultar saldos, calcular correlativos ni insertar filas en Excel durante la exportación. Las opciones 1 y 2 conservan el guardado habitual. Se valida el monto y la clasificación también para exportar.
 
 El documento lleva el aviso **PRUEBA - SIN REGISTRO EN EXCEL**, un identificador temporal `PRUEBA_...`, número de operación sin registro y saldo no calculado. Incluye la imagen del comprobante como el respaldo normal. Los datos originales se conservan para editar, volver a exportar o confirmar un registro real posteriormente; `/cancelar` termina la sesión. Si falla la exportación, se puede reintentar con 5. Se limpian los archivos temporales tanto al finalizar como al fallar.
 
