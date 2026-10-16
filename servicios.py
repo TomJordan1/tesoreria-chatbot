@@ -9,15 +9,20 @@ from openai import OpenAI
 from datetime import datetime, timezone, timedelta
 import msal
 
-# --- CONFIGURACIÓN DE GROQ ---
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-if not GROQ_API_KEY:
-    raise ValueError("🚨 ERROR: Falta GROQ_API_KEY en el archivo .env")
+# --- PROVEEDOR DE IA (optativo; conserva Groq en instalaciones existentes) ---
+IA_PROVEEDOR = (os.getenv("IA_PROVEEDOR") or "groq").strip().lower()
+if IA_PROVEEDOR not in ("groq", "deepseek"):
+    raise ValueError("IA_PROVEEDOR debe ser groq o deepseek.")
+variable_clave = "DEEPSEEK_API_KEY" if IA_PROVEEDOR == "deepseek" else "GROQ_API_KEY"
+clave_ia = (os.getenv(variable_clave) or "").strip()
+if not clave_ia:
+    raise ValueError(f"🚨 ERROR: Falta {variable_clave} en el archivo .env")
 
 llm_client = OpenAI(
-    api_key=GROQ_API_KEY,
-    base_url="https://api.groq.com/openai/v1",
-    timeout=30.0
+    api_key=clave_ia,
+    base_url="https://api.deepseek.com" if IA_PROVEEDOR == "deepseek" else "https://api.groq.com/openai/v1",
+    timeout=30.0,
+    **({"max_retries": 0} if IA_PROVEEDOR == "deepseek" else {}),
 )
 
 # --- CONFIGURACIÓN DE MODELOS LLM ---
@@ -43,15 +48,45 @@ def _parametros_modelo_desde_entorno(nombre_variable, predeterminado):
 MODELO_VISION = {
     "model": (os.getenv("GROQ_MODELO_VISION") or "").strip() or "qwen/qwen3.6-27b",
     "max_completion_tokens": 2048,
-    "extra_params": _parametros_modelo_desde_entorno("GROQ_VISION_EXTRA_PARAMS", {"reasoning_effort": "none"}),
+    "extra_params": _parametros_modelo_desde_entorno("GROQ_VISION_EXTRA_PARAMS", {"reasoning_effort": "none"}) if IA_PROVEEDOR == "groq" else {},
 }
 
 MODELO_TEXTO = {
     "model": (os.getenv("GROQ_MODELO_TEXTO") or "").strip() or "llama-3.3-70b-versatile",
     "max_completion_tokens": 512,
     "temperature": 0,
-    "extra_params": _parametros_modelo_desde_entorno("GROQ_TEXTO_EXTRA_PARAMS", {}),
+    "extra_params": _parametros_modelo_desde_entorno("GROQ_TEXTO_EXTRA_PARAMS", {}) if IA_PROVEEDOR == "groq" else {},
 }
+
+if IA_PROVEEDOR == "deepseek":
+    # En Chat Completions DeepSeek usa max_tokens y thinking en extra_body.
+    # Se desactiva razonamiento en ambos pasos para esta extracción breve.
+    MODELO_VISION = {
+        "model": (os.getenv("DEEPSEEK_MODELO_VISION") or "").strip() or "deepseek-flash",
+        "max_completion_tokens": 2048,
+        "extra_params": {"extra_body": {"thinking": {"type": "disabled"}}},
+    }
+    MODELO_TEXTO = {
+        "model": (os.getenv("DEEPSEEK_MODELO_TEXTO") or "").strip() or "deepseek-flash",
+        "max_completion_tokens": 512,
+        "temperature": 0,
+        "extra_params": {"extra_body": {"thinking": {"type": "disabled"}}},
+    }
+
+
+def _opciones_llm(modelo):
+    limite = "max_tokens" if IA_PROVEEDOR == "deepseek" else "max_completion_tokens"
+    return {"model": modelo["model"], limite: modelo["max_completion_tokens"], **modelo["extra_params"]}
+
+
+def _contenido_llm(respuesta):
+    eleccion = respuesta.choices[0]
+    if eleccion.finish_reason == "length":
+        raise ValueError("Respuesta de IA truncada; no se utilizarán datos incompletos.")
+    contenido = eleccion.message.content
+    if not isinstance(contenido, str) or not contenido.strip():
+        raise ValueError("La IA no devolvió contenido utilizable.")
+    return contenido.strip()
 
 # --- CONFIGURACIÓN DE FORMATO DE FECHA ---
 # "PE" = DD/MM/YYYY (Perú, por defecto), "US" = MM/DD/YYYY (USA)
@@ -241,9 +276,7 @@ def _extraer_texto_de_imagen(image_bytes: bytes) -> str:
     imagen_base64 = base64.b64encode(image_bytes).decode('utf-8')
 
     response = llm_client.chat.completions.create(
-        model=MODELO_VISION["model"],
-        max_completion_tokens=MODELO_VISION["max_completion_tokens"],
-        **MODELO_VISION["extra_params"],
+        **_opciones_llm(MODELO_VISION),
         messages=[
             {
                 "role": "user",
@@ -254,7 +287,7 @@ def _extraer_texto_de_imagen(image_bytes: bytes) -> str:
             }
         ]
     )
-    contenido = response.choices[0].message.content.strip()
+    contenido = _contenido_llm(response)
     
     # Limpieza defensiva por si el modelo aún incluye bloques <think>
     contenido = re.sub(r"<think>.*?</think>", "", contenido, flags=re.DOTALL).strip()
@@ -275,10 +308,12 @@ def _identificar_error_llm(excepcion: Exception) -> str:
             "Por favor, avísale al área de TIC para que me actualicen. "
             "Mientras tanto, no puedo procesar imágenes. ¡Perdón por las molestias!"
         )
+    elif "insufficient_balance" in error_str or "402" in error_str:
+        return "🐮 No pude leer el comprobante porque el servicio de IA no tiene saldo. Avísale al área de TIC para que lo revise."
     elif "rate_limit" in error_str or "429" in error_str:
         return (
             "🐌 ¡Uff! Me hicieron trabajar demasiado rápido y me pusieron en pausa. "
-            "Dame un minutito para recuperar el aliento y vuelve a intentarlo, ¿sí?"
+            "El tiempo de espera depende del límite alcanzado. Inténtalo más tarde; si continúa, avísale al área de TIC."
         )
     elif "authentication" in error_str or "401" in error_str or "invalid_api_key" in error_str:
         return (
@@ -352,18 +387,16 @@ Devuelve exclusivamente un JSON válido con esta estructura:
 
     try:
         response = llm_client.chat.completions.create(
-            model=MODELO_TEXTO["model"],
+            **_opciones_llm(MODELO_TEXTO),
             temperature=MODELO_TEXTO["temperature"],
-            max_completion_tokens=MODELO_TEXTO["max_completion_tokens"],
             response_format={"type": "json_object"},
-            **MODELO_TEXTO["extra_params"],
             messages=[
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": prompt}
             ]
         )
 
-        contenido = response.choices[0].message.content
+        contenido = _contenido_llm(response)
         datos = json.loads(contenido)
 
         campos_requeridos = {"fecha", "concepto", "tipo", "ing_eg", "motivo", "acreedor", "deudor", "estado", "monto"}
