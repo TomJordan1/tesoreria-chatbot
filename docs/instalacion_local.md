@@ -33,6 +33,7 @@ Crea un archivo `.env` en la raíz del proyecto:
 
 ```env
 TELEGRAM_TOKEN=tu_token_de_telegram
+TELEGRAM_WEBHOOK_SECRET=tu_secreto_aleatorio_del_webhook
 GROQ_API_KEY=tu_api_key_de_groq
 MS_TENANT_ID=tu_tenant_id_de_microsoft
 MS_CLIENT_ID=tu_client_id_de_microsoft
@@ -81,17 +82,7 @@ https://abcd-1234.ngrok-free.app
 
 ### 🔗 Paso 6: Configurar el Webhook de Telegram
 
-Abre en tu navegador:
-
-```text
-https://api.telegram.org/bot<TU_TELEGRAM_TOKEN>/setWebhook?url=<TU_URL_NGROK>/webhook
-```
-
-Ejemplo:
-
-```text
-https://api.telegram.org/bot123456:ABCDEF/setWebhook?url=https://abcd-1234.ngrok-free.app/webhook
-```
+Agrega `TELEGRAM_WEBHOOK_SECRET` a tu `.env` y registra el mismo valor como `secret_token` con Telegram, usando la URL HTTPS de Ngrok terminada en `/webhook`. Sigue [la guía de configuración del webhook protegido](webhook_telegram.md). La aplicación no inicia sin un secreto válido y una llamada HTTP directa sin la cabecera correcta recibe 403, incluso para `/mi_id`.
 
 Si todo salió bien, Telegram responderá:
 

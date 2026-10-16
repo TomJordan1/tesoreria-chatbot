@@ -47,6 +47,6 @@ La lista se lee desde el archivo `MS_USUARIOS_ITEM_ID` mediante Microsoft Graph 
 
 Si nadie puede entrar, comprueba `MS_USUARIOS_ITEM_ID`, el nombre de la tabla, los encabezados, el Telegram ID, la columna `activo` y la conexión existente a SharePoint. Una tabla vacía no autoriza a nadie. Los registros contables y el formato de la tabla de movimientos no se modifican al administrar accesos.
 
-El control usa el ID de remitente recibido en el webhook. La verificación del origen de ese webhook mediante un secreto de Telegram sigue siendo una mejora pendiente; esta lista no autentica por sí sola las llamadas HTTP entrantes.
+Antes de consultar el ID de remitente, el servidor valida el secreto configurado con Telegram. Es obligatorio configurar `TELEGRAM_WEBHOOK_SECRET` en Render y el mismo `secret_token` al registrar el webhook; consulta [Protección del webhook de Telegram](webhook_telegram.md). `/mi_id` es público para las personas que escriben por Telegram, pero una llamada HTTP directa también debe superar esa validación.
 
 Referencia técnica de la lectura utilizada: [Microsoft Graph: rango de una tabla](https://learn.microsoft.com/en-us/graph/api/table-range?view=graph-rest-1.0).

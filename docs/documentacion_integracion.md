@@ -46,7 +46,13 @@ La tabla `USUARIOS_AUTORIZADOS` se ubica en un Excel separado, con columnas `tel
 
 La lista se cachea dos minutos en memoria. Al vencer, un fallo descarta el acceso anterior y establece 30 segundos antes de reintentar, manteniendo `/mi_id` disponible. Una fila inactiva prevalece ante duplicados. Las pruebas cubren lectura por encabezados, bajas y expiración, fallos de consulta, acceso público al ID y bloqueo del resto del flujo para desconocidos.
 
-Antes de habilitar esta versión, preparar la tabla siguiendo [la guía de control de acceso](control_acceso.md). La lectura real en SharePoint debe comprobarse en el despliegue con las credenciales existentes. La autenticación del origen HTTP del webhook y la deduplicación mediante `update_id` siguen pendientes.
+Antes de habilitar esta versión, preparar la tabla siguiendo [la guía de control de acceso](control_acceso.md). La lectura real en SharePoint debe comprobarse en el despliegue con las credenciales existentes. La deduplicación mediante `update_id` sigue pendiente.
+
+### Validación del secreto del webhook
+
+`TELEGRAM_WEBHOOK_SECRET` es obligatorio y se valida al iniciar: entre 1 y 256 caracteres ASCII de letras, números, guion o guion bajo. Antes de leer cualquier actualización, el webhook compara en tiempo constante la cabecera `X-Telegram-Bot-Api-Secret-Token` con ese valor. Si falta o no coincide, devuelve HTTP 403 sin leer JSON, consultar Excel, consumir IA ni modificar sesiones. El secreto se configura también en Telegram mediante `setWebhook.secret_token`; no basta con agregar la variable de Render. La validación cubre `/mi_id` a nivel HTTP, conservando su disponibilidad para cualquier persona que escriba a través del webhook de Telegram configurado.
+
+Ver [configuración y activación del webhook protegido](webhook_telegram.md). No se agregan dependencias ni servicios de pago. Las pruebas simulan el transporte; el registro real con Telegram debe verificarse al desplegar.
 
 ### 2.1 Backend y Bot de Telegram (Python)
 *   **Manejo de Estados de Sesión:** Se corrigió el orden de evaluación en el bucle principal. Los comandos `/ayuda` y `/cancelar` ahora se procesan antes de validar la existencia de un estado activo, permitiendo su ejecución global en cualquier momento de la conversación.

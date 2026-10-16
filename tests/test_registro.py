@@ -10,7 +10,7 @@ import sys
 import tempfile
 import types
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -24,10 +24,17 @@ class AplicacionPrueba:
     on_event = get
 
 
-def cargar_modulos():
+class ExcepcionHTTPPrueba(Exception):
+    def __init__(self, status_code, detail):
+        self.status_code = status_code
+        self.detail = detail
+        super().__init__(detail)
+
+
+def cargar_modulos(secreto="secreto_webhook_prueba"):
     sustitutos = {
         "requests": types.SimpleNamespace(get=Mock(), post=Mock()),
-        "fastapi": types.SimpleNamespace(FastAPI=AplicacionPrueba, Request=object),
+        "fastapi": types.SimpleNamespace(FastAPI=AplicacionPrueba, Request=object, HTTPException=ExcepcionHTTPPrueba),
         "dotenv": types.SimpleNamespace(load_dotenv=lambda: None),
         "openai": types.SimpleNamespace(OpenAI=Mock()),
         "msal": types.SimpleNamespace(),
@@ -35,6 +42,7 @@ def cargar_modulos():
     }
     with patch.dict(sys.modules, sustitutos), patch.dict(os.environ, {
         "TELEGRAM_TOKEN": "prueba", "GROQ_API_KEY": "prueba",
+        "TELEGRAM_WEBHOOK_SECRET": secreto,
     }):
         modulos = []
         for nombre in ("servicios", "main"):
@@ -133,6 +141,7 @@ class FlujoRegistro(unittest.TestCase):
         if foto:
             mensaje["photo"] = [{"file_id": "foto"}]
         request = types.SimpleNamespace()
+        request.headers = {"X-Telegram-Bot-Api-Secret-Token": main.TELEGRAM_WEBHOOK_SECRET}
         async def json():
             return {"message": mensaje}
         request.json = json
@@ -259,6 +268,39 @@ class FlujoRegistro(unittest.TestCase):
                 self.assertNotIn("1", main.user_states)
                 if not confirmado:
                     self.assertIn("ya está guardada en Excel", self.mensajes.call_args.args[1])
+
+
+class SeguridadWebhook(unittest.TestCase):
+    def test_rechaza_secretos_incorrectos_antes_de_leer_json_o_consultar_excel(self):
+        for secreto in (None, "", "incorrecto", "ñ", main.TELEGRAM_WEBHOOK_SECRET + "x"):
+            with self.subTest(secreto=secreto), patch.object(main, "usuario_autorizado") as acceso, patch.object(main, "enviar_mensaje") as enviar:
+                request = types.SimpleNamespace(headers={} if secreto is None else {"X-Telegram-Bot-Api-Secret-Token": secreto}, json=AsyncMock())
+                corrutina = main.telegram_webhook(request)
+                try:
+                    with self.assertRaises(ExcepcionHTTPPrueba) as error:
+                        corrutina.send(None)
+                    self.assertEqual(error.exception.status_code, 403)
+                    request.json.assert_not_awaited()
+                    acceso.assert_not_called()
+                    enviar.assert_not_called()
+                finally:
+                    corrutina.close()
+
+    def test_secreto_correcto_permite_leer_actualizacion(self):
+        request = types.SimpleNamespace(headers={"X-Telegram-Bot-Api-Secret-Token": main.TELEGRAM_WEBHOOK_SECRET}, json=AsyncMock(return_value={"update_id": 1}))
+        corrutina = main.telegram_webhook(request)
+        try:
+            with self.assertRaises(StopIteration) as resultado:
+                corrutina.send(None)
+            self.assertEqual(resultado.exception.value, {"status": "ok"})
+            request.json.assert_awaited_once()
+        finally:
+            corrutina.close()
+
+    def test_inicio_exige_secreto_con_formato_admitido_por_telegram(self):
+        for secreto in ("", "con espacios", "ñ", "x" * 257):
+            with self.subTest(secreto=secreto), self.assertRaisesRegex(ValueError, "TELEGRAM_WEBHOOK_SECRET"):
+                cargar_modulos(secreto)
 
 
 class ListaUsuarios(unittest.TestCase):

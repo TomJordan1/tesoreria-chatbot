@@ -2,8 +2,10 @@ import os
 import requests
 import traceback
 import math
+import re
+import secrets
 from uuid import uuid4
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,6 +19,10 @@ app = FastAPI()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 if not TELEGRAM_TOKEN:
     raise ValueError("🚨 ERROR: Falta TELEGRAM_TOKEN en el archivo .env")
+
+TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
+if not re.fullmatch(r"[A-Za-z0-9_-]{1,256}", TELEGRAM_WEBHOOK_SECRET):
+    raise ValueError("🚨 ERROR: Configura TELEGRAM_WEBHOOK_SECRET con 1 a 256 caracteres: letras, números, guion o guion bajo.")
 
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
@@ -163,6 +169,9 @@ def procesar_imagen_y_confirmar(chat_id):
 
 @app.post("/webhook")
 async def telegram_webhook(request: Request):
+    secreto_recibido = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+    if not secrets.compare_digest(secreto_recibido.encode("utf-8"), TELEGRAM_WEBHOOK_SECRET.encode("utf-8")):
+        raise HTTPException(status_code=403, detail="Webhook no autorizado")
     data = await request.json()
     if "message" not in data: return {"status": "ok"}
 

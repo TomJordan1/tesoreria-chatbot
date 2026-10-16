@@ -33,6 +33,7 @@ Crea un archivo `.env` en la raíz del proyecto:
 
 ```env
 TELEGRAM_TOKEN=tu_token_de_telegram
+TELEGRAM_WEBHOOK_SECRET=tu_secreto_aleatorio_del_webhook
 GROQ_API_KEY=tu_api_key_de_groq
 MS_TENANT_ID=tu_tenant_id_de_microsoft
 MS_CLIENT_ID=tu_client_id_de_microsoft
@@ -82,6 +83,7 @@ Agregar en Render:
 
 ```env
 TELEGRAM_TOKEN=tu_token_de_telegram
+TELEGRAM_WEBHOOK_SECRET=tu_secreto_aleatorio_del_webhook
 GROQ_API_KEY=tu_api_key_de_groq
 MS_TENANT_ID=tu_tenant_id_de_microsoft
 MS_CLIENT_ID=tu_client_id_de_microsoft
@@ -100,11 +102,9 @@ FORMATO_FECHA_EXCEL=PE
 
 ### 4. Configurar Webhook de Telegram
 
-Reemplaza los valores y abre en tu navegador:
+Configura `TELEGRAM_WEBHOOK_SECRET` en Render y registra el mismo valor como `secret_token` en Telegram. Sigue [la guía del webhook protegido](webhook_telegram.md), que incluye generación del secreto y registro por POST sin introducir credenciales en el historial de comandos. Usa la URL `https://<TU_APP>.onrender.com/webhook`.
 
-```text
-https://api.telegram.org/bot<TU_TELEGRAM_TOKEN>/setWebhook?url=https://<TU_APP>.onrender.com/webhook
-```
+Prepara la variable y el registro en Telegram antes de desplegar esta versión: la aplicación no inicia sin un secreto válido y las llamadas sin la cabecera correcta reciben 403.
 
 Si todo salió correctamente, Telegram responderá:
 
