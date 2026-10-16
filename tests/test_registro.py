@@ -116,6 +116,7 @@ class FlujoRegistro(unittest.TestCase):
     def setUp(self):
         main.user_states.clear()
         self.mensajes = self.enterContext(patch.object(main, "enviar_mensaje"))
+        self.enterContext(patch.object(main, "usuario_autorizado", return_value=True))
         self.saldo = self.enterContext(patch.object(main, "obtener_saldo_actual", return_value=100))
         self.guardar = self.enterContext(patch.object(main, "guardar_en_excel", return_value={**datos_validos(), "codigo": "O16102601"}))
         self.enterContext(patch.object(main.traceback, "print_exc"))
@@ -125,8 +126,10 @@ class FlujoRegistro(unittest.TestCase):
         self.addCleanup(os.chdir, self.anterior)
         main.user_states["1"] = dict(step="confirmar", datos_procesados=datos_validos(), saldo_previo=100, file_id="foto")
 
-    def enviar(self, texto=None, foto=False):
-        mensaje = {"chat": {"id": 1}, "text": texto or ""}
+    def enviar(self, texto=None, foto=False, usuario_id=1, chat_id=1):
+        mensaje = {"chat": {"id": chat_id}, "text": texto or ""}
+        if usuario_id is not None:
+            mensaje["from"] = {"id": usuario_id}
         if foto:
             mensaje["photo"] = [{"file_id": "foto"}]
         request = types.SimpleNamespace()
@@ -256,6 +259,123 @@ class FlujoRegistro(unittest.TestCase):
                 self.assertNotIn("1", main.user_states)
                 if not confirmado:
                     self.assertIn("ya está guardada en Excel", self.mensajes.call_args.args[1])
+
+
+class ListaUsuarios(unittest.TestCase):
+    def setUp(self):
+        servicios._cache_usuarios.update(ids=set(), vence=0)
+
+    def consultar(self, filas):
+        with patch.object(servicios, "obtener_token_ms", return_value="token"), patch.object(servicios.requests, "get", return_value=Mock(json=lambda: {"values": filas})) as consulta:
+            resultado = servicios.obtener_usuarios_autorizados()
+            self.assertIn("/tables/USUARIOS_AUTORIZADOS/range", consulta.call_args.args[0])
+            return resultado
+
+    def test_lee_columnas_por_nombre_y_solo_habilita_activos(self):
+        self.assertEqual(self.consultar([
+            ["nombre", "activo", "telegram_id"],
+            ["Ana", "Sí", "123"], ["Tom", "si", 456],
+            ["Luz", True, 789.0], ["Luis", "No", "111"],
+            ["Sin acceso", "", "222"], ["Vacío", "Sí", ""],
+        ]), {"123", "456", "789"})
+
+    def test_una_fila_inactiva_prevalece_en_ids_duplicados(self):
+        self.assertEqual(self.consultar([
+            ["telegram_id", "nombre", "activo"],
+            ["123", "Ana", "Sí"], ["123", "Ana", "No"],
+        ]), set())
+
+    def test_no_habilita_ids_ni_valores_activos_ambiguos(self):
+        for valor in (True, None, -1, 1.5, "@ana", "1e3", float("inf"), "１２３"):
+            with self.subTest(valor=valor):
+                self.assertIsNone(servicios._normalizar_telegram_id(valor))
+        self.assertEqual(self.consultar([
+            ["telegram_id", "nombre", "activo"], [123, "Ana", "quizás"],
+        ]), set())
+
+    def test_tabla_vacia_o_mal_configurada(self):
+        self.assertEqual(self.consultar([["telegram_id", "nombre", "activo"]]), set())
+        for filas in ([], [["id", "nombre", "activo"]], [["telegram_id", "nombre", "activo"], [123]]):
+            with self.subTest(filas=filas), self.assertRaises(ValueError):
+                self.consultar(filas)
+
+    def test_cache_evitar_consultas_repetidas_y_aplicar_bajas(self):
+        with patch.object(servicios.time, "monotonic", return_value=10) as reloj, patch.object(servicios, "obtener_usuarios_autorizados", return_value={"123"}) as consulta:
+            self.assertTrue(servicios.usuario_autorizado(123))
+            self.assertFalse(servicios.usuario_autorizado(999))
+            consulta.assert_called_once()
+            reloj.return_value = 131
+            consulta.return_value = set()
+            self.assertFalse(servicios.usuario_autorizado(123))
+            self.assertEqual(consulta.call_count, 2)
+
+    def test_error_al_refrescar_descarta_acceso_vencido_y_reintenta(self):
+        servicios._cache_usuarios.update(ids={"123"}, vence=10)
+        with patch.object(servicios.time, "monotonic", return_value=11) as reloj, patch.object(servicios, "obtener_usuarios_autorizados", side_effect=TimeoutError()) as consulta:
+            self.assertFalse(servicios.usuario_autorizado(123))
+            self.assertFalse(servicios.usuario_autorizado(123))
+            consulta.assert_called_once()
+            reloj.return_value = 42
+            consulta.side_effect = None
+            consulta.return_value = {"123"}
+            self.assertTrue(servicios.usuario_autorizado(123))
+
+    def test_error_http_o_autenticacion_no_habilita_usuarios(self):
+        with patch.object(servicios, "obtener_token_ms", return_value=None), self.assertRaises(ValueError):
+            servicios.obtener_usuarios_autorizados()
+        with patch.object(servicios, "obtener_token_ms", return_value="token"), patch.object(servicios.requests, "get", return_value=Mock(raise_for_status=Mock(side_effect=RuntimeError("403")))), self.assertRaises(RuntimeError):
+            servicios.obtener_usuarios_autorizados()
+
+
+class AccesoToribio(unittest.TestCase):
+    enviar = FlujoRegistro.enviar
+
+    def setUp(self):
+        main.user_states.clear()
+        self.mensajes = self.enterContext(patch.object(main, "enviar_mensaje"))
+        self.acceso = self.enterContext(patch.object(main, "usuario_autorizado", return_value=False))
+        self.saldo = self.enterContext(patch.object(main, "obtener_saldo_actual"))
+        self.guardar = self.enterContext(patch.object(main, "guardar_en_excel"))
+        self.ia = self.enterContext(patch.object(main, "extraer_datos_recibo_llm"))
+
+    def test_mi_id_es_publico_no_consulta_excel_y_no_borra_sesion(self):
+        main.user_states["1"] = {"step": "confirmar"}
+        for comando in ("/mi_id", "/mi_id@ToribioBot"):
+            self.enviar(comando, usuario_id=123)
+            self.assertIn("<code>123</code>", self.mensajes.call_args.args[1])
+        self.acceso.assert_not_called()
+        self.saldo.assert_not_called()
+        self.assertEqual(main.user_states["1"], {"step": "confirmar"})
+
+    def test_desconocido_solo_recibe_mensaje_de_acceso(self):
+        main.user_states["1"] = {"step": "confirmar"}
+        esperado = "¡Muu! Todavía no te conozco 🐮. Pídele al equipo de tesorería que te dé acceso. Escribe /mi_id y compárteles tu identificador."
+        for texto in ("Hola", "/start", "/ayuda", "/cancelar", "/solo_pdf", "1", "2", "3", "5"):
+            with self.subTest(texto=texto):
+                self.enviar(texto, usuario_id=123)
+                self.assertEqual(self.mensajes.call_args.args[1], esperado)
+        self.enviar(foto=True, usuario_id=123)
+        self.assertEqual(self.mensajes.call_args.args[1], esperado)
+        self.assertEqual(main.user_states["1"], {"step": "confirmar"})
+        self.saldo.assert_not_called()
+        self.guardar.assert_not_called()
+        self.ia.assert_not_called()
+
+    def test_comprueba_remitente_y_no_id_del_chat(self):
+        self.enviar("Hola", usuario_id=123, chat_id=-999)
+        self.acceso.assert_called_once_with(123)
+
+    def test_sin_remitente_no_autoriza_ni_muestra_id(self):
+        self.enviar("/mi_id", usuario_id=None)
+        self.acceso.assert_not_called()
+        self.assertIn("Todavía no te conozco", self.mensajes.call_args.args[1])
+
+    def test_autorizado_puede_seguir_usando_el_bot(self):
+        self.acceso.return_value = True
+        main.user_states["1"] = {"step": "confirmar"}
+        self.enviar("/cancelar", usuario_id=123)
+        self.assertNotIn("1", main.user_states)
+        self.assertIn("Operación cancelada", self.mensajes.call_args.args[1])
 
 
 class PlantillaPDF(unittest.TestCase):

@@ -10,6 +10,7 @@ load_dotenv()
 
 from servicios import obtener_saldo_actual, extraer_datos_recibo_llm, guardar_en_excel
 from servicios import ErrorConsultaSaldo, ErrorValidacionOperacion, validar_operacion
+from servicios import usuario_autorizado
 from generador_pdf import generar_comprobante_pdf
 
 app = FastAPI()
@@ -168,6 +169,17 @@ async def telegram_webhook(request: Request):
     message = data["message"]
         
     chat_id = str(message["chat"]["id"])
+    text = message.get("text", "").strip()
+    remitente = message.get("from", {})
+    usuario_id = remitente.get("id")
+    # /mi_id funciona sin Excel y sin alterar una operación en curso.
+    comando = text.split()[0].lower().split("@", 1)[0] if text else ""
+    if comando == "/mi_id" and type(usuario_id) is int and usuario_id > 0 and not remitente.get("is_bot", False):
+        enviar_mensaje(chat_id, f"Tu identificador de Telegram es: <code>{usuario_id}</code>\nCompártelo con el equipo de tesorería para que puedan darte acceso. ¡Muu! 🐮")
+        return {"status": "ok"}
+    if type(usuario_id) is not int or usuario_id <= 0 or remitente.get("is_bot", False) or not usuario_autorizado(usuario_id):
+        enviar_mensaje(chat_id, "¡Muu! Todavía no te conozco 🐮. Pídele al equipo de tesorería que te dé acceso. Escribe /mi_id y compárteles tu identificador.")
+        return {"status": "ok"}
 
     # --- 1. RECEPCIÓN DE IMAGEN ---
     if "photo" in message:
@@ -189,8 +201,6 @@ async def telegram_webhook(request: Request):
         return {"status": "ok"}
 
     # --- 2. MANEJO DE TEXTO ---
-    text = message.get("text", "").strip()
-
     if text.lower() == "/cancelar":
         user_states.pop(chat_id, None)
         enviar_mensaje(chat_id, "¡Entendido! Operación cancelada. Envíame otra foto cuando quieras empezar de nuevo.")

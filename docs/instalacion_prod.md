@@ -114,4 +114,6 @@ Si todo salió correctamente, Telegram responderá:
 
 ### ✅ Listo
 
+Antes de habilitar esta versión, prepara la tabla `USUARIOS_AUTORIZADOS` en el mismo Excel de SharePoint. Sigue [Control de acceso desde Excel](control_acceso.md) para dar de alta a la primera persona con `/mi_id`. No se agregan variables de entorno en Render. Sin usuarios habilitados, solo funciona `/mi_id`; las altas y bajas se reflejan al renovar la lista, hasta dos minutos después.
+
 Ahora puedes enviar fotos o mensajes a tu bot desde Telegram y el servidor procesará las solicitudes.

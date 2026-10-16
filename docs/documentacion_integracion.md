@@ -40,6 +40,14 @@ Si la consulta inicial de saldo falla o Excel está vacío, `/solo_pdf` permite 
 
 Ejecutar `python -m unittest discover -s tests -v` desde la raíz. Las pruebas usan la biblioteca estándar y sustituyen las integraciones externas, sin consumir cuota de Groq, enviar mensajes ni escribir en SharePoint. Cubren validación, conservación de sesiones ante errores, reintento de consulta de saldo, guardado de ingresos/egresos, incertidumbre de escritura, fallos del PDF, exportación sin acceso a Excel y aviso de prueba en la plantilla. No reemplazan una prueba de integración con las credenciales y servicios reales ni una revisión visual del PDF renderizado.
 
+### Acceso mediante lista de usuarios en Excel
+
+Se agrega la tabla `USUARIOS_AUTORIZADOS` al mismo libro configurado, con columnas `telegram_id`, `nombre` y `activo`. El nombre de tabla está definido en `servicios.py`; no se agregan variables de entorno ni dependencias. El permiso se comprueba antes de procesar fotos, comandos, estados, IA, registros o PDFs, usando `message.from.id` y no el ID del chat. `/mi_id` es público, no consulta Excel y conserva la sesión actual; las personas no autorizadas reciben el mensaje de Toribio acordado.
+
+La lista se cachea dos minutos en memoria. Al vencer, un fallo descarta el acceso anterior y establece 30 segundos antes de reintentar, manteniendo `/mi_id` disponible. Una fila inactiva prevalece ante duplicados. Las pruebas cubren lectura por encabezados, bajas y expiración, fallos de consulta, acceso público al ID y bloqueo del resto del flujo para desconocidos.
+
+Antes de habilitar esta versión, preparar la tabla siguiendo [la guía de control de acceso](control_acceso.md). La lectura real en SharePoint debe comprobarse en el despliegue con las credenciales existentes. La autenticación del origen HTTP del webhook y la deduplicación mediante `update_id` siguen pendientes.
+
 ### 2.1 Backend y Bot de Telegram (Python)
 *   **Manejo de Estados de Sesión:** Se corrigió el orden de evaluación en el bucle principal. Los comandos `/ayuda` y `/cancelar` ahora se procesan antes de validar la existencia de un estado activo, permitiendo su ejecución global en cualquier momento de la conversación.
 *   **Comando de Ayuda:** Se implementó el comando `/ayuda` que renderiza una infografía almacenada localmente en el repositorio (`infografia.png`) utilizando el método `sendPhoto` de la API de Telegram.

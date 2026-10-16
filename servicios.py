@@ -3,6 +3,7 @@ import json
 import re
 import base64
 import math
+import time
 import requests
 from openai import OpenAI
 from datetime import datetime, timezone, timedelta
@@ -51,6 +52,10 @@ MS_DRIVE_ID = os.getenv("MS_DRIVE_ID")
 MS_ITEM_ID = os.getenv("MS_ITEM_ID")
 MS_TABLE_NAME = os.getenv("MS_TABLE_NAME", "TablaFinanzas")
 
+# Tabla adicional en el mismo archivo Excel; no requiere variables nuevas.
+TABLA_USUARIOS = "USUARIOS_AUTORIZADOS"
+_cache_usuarios = {"ids": set(), "vence": 0.0}
+
 # Hora de Perú (UTC-5)
 ZONA_HORARIA_PERU = timezone(timedelta(hours=-5))
 
@@ -75,6 +80,67 @@ def obtener_token_ms():
     else:
         print(f"Error obteniendo token: {result.get('error')}")
         return None
+
+def _normalizar_telegram_id(valor):
+    """Normaliza representaciones numéricas exactas de IDs positivos."""
+    if isinstance(valor, bool):
+        return None
+    if isinstance(valor, float):
+        if not math.isfinite(valor) or not valor.is_integer() or valor > 2**53:
+            return None
+        valor = int(valor)
+    texto = str(valor).strip()
+    if not texto.isascii() or not texto.isdigit() or int(texto) <= 0:
+        return None
+    return str(int(texto))
+
+
+def obtener_usuarios_autorizados():
+    """Lee la tabla de acceso del mismo Excel, incluidos sus encabezados."""
+    token = obtener_token_ms()
+    if not token:
+        raise ValueError("No se pudo autenticar para consultar los usuarios.")
+    url = f"https://graph.microsoft.com/v1.0/sites/{MS_SITE_ID}/drives/{MS_DRIVE_ID}/items/{MS_ITEM_ID}/workbook/tables/{TABLA_USUARIOS}/range"
+    respuesta = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=15)
+    respuesta.raise_for_status()
+    filas = respuesta.json()["values"]
+    if not isinstance(filas, list) or not filas or not isinstance(filas[0], list):
+        raise ValueError("La tabla de usuarios no contiene encabezados válidos.")
+    encabezados = [str(valor).strip().lower() for valor in filas[0]]
+    if any(encabezados.count(campo) != 1 for campo in ("telegram_id", "nombre", "activo")):
+        raise ValueError("Se requieren los encabezados telegram_id, nombre y activo.")
+    columna_id = encabezados.index("telegram_id")
+    columna_activo = encabezados.index("activo")
+    usuarios = {}
+    for fila in filas[1:]:
+        if not isinstance(fila, list) or len(fila) <= max(columna_id, columna_activo):
+            raise ValueError("La tabla de usuarios contiene una fila incompleta.")
+        usuario_id = _normalizar_telegram_id(fila[columna_id])
+        if usuario_id is None:
+            continue
+        activo = str(fila[columna_activo]).strip().lower() in ("sí", "si", "true", "1")
+        # Una fila deshabilitada prevalece si el ID se repite por accidente.
+        usuarios[usuario_id] = usuarios.get(usuario_id, True) and activo
+    return {usuario_id for usuario_id, activo in usuarios.items() if activo}
+
+
+def usuario_autorizado(usuario_id):
+    """Cachea la lista 2 minutos; ante fallos bloquea y reintenta en 30 segundos."""
+    usuario_id = _normalizar_telegram_id(usuario_id)
+    if usuario_id is None:
+        return False
+    if time.monotonic() >= _cache_usuarios["vence"]:
+        try:
+            ids = obtener_usuarios_autorizados()
+            duracion = 120
+        except Exception:
+            # No reutilizar una lista vencida ni dar acceso si Excel no responde.
+            print("No se pudo actualizar la lista de usuarios autorizados.")
+            ids = set()
+            duracion = 30
+        _cache_usuarios.update(ids=ids, vence=time.monotonic() + duracion)
+    return usuario_id in _cache_usuarios["ids"]
+
 
 class ErrorConsultaSaldo(Exception):
     """No fue posible consultar un saldo confiable en Excel."""
