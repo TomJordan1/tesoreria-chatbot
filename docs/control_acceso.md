@@ -8,7 +8,7 @@ La lista de personas habilitadas se administra en **otro archivo Excel de ShareP
 2. Agrega los encabezados `telegram_id`, `nombre` y `activo`. Configura la columna `telegram_id` como **Texto** antes de pegar identificadores.
 3. Selecciona los encabezados y al menos una fila de datos y usa **Insertar > Tabla**, indicando que tiene encabezados. No basta con escribir las celdas: debe ser una tabla de Excel.
 4. En las opciones de diseño de la tabla, cambia su nombre a **`USUARIOS_AUTORIZADOS`**. Ese es el nombre de la tabla, independientemente del nombre de la hoja. Puedes dejar una fila vacía hasta obtener tu ID.
-5. Agrega `MS_USUARIOS_ITEM_ID` en las variables de entorno de Render con el ID de Microsoft Graph del nuevo archivo (no su nombre, URL ni el ID de la tabla). Conserva `MS_ITEM_ID` con el archivo contable y despliega esta versión del bot. Mientras no haya usuarios activos, solo funcionará `/mi_id`.
+5. Obtén el ID siguiendo [Microsoft Graph paso a paso](microsoft_graph_paso_a_paso.md), que explica sitio, biblioteca, archivo y permisos. Agrega `MS_USUARIOS_ITEM_ID` en las variables de entorno de Render con el ID del nuevo archivo (no su nombre, URL ni el ID de la tabla). Conserva `MS_ITEM_ID` con el archivo contable. Antes de dar por operativo el acceso, revisa la limitación de autenticación Excel del apartado 8 de esa guía y comprueba la identidad de la aplicación. Mientras no haya usuarios activos o no se pueda leer la lista, solo funcionará `/mi_id` a través del webhook validado.
 6. Escribe `/mi_id` al bot y pega el identificador que devuelve en `telegram_id`. Escribe tu nombre y `Sí` en `activo`. Guarda los cambios en Excel y espera hasta dos minutos antes de volver a usar el bot.
 
 Ejemplo con IDs ficticios:

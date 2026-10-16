@@ -31,6 +31,8 @@ pip install -r requirements.txt
 
 Crea un archivo `.env` en la raíz del proyecto:
 
+Para obtener y comprobar los valores `MS_*`, sigue [Microsoft Graph paso a paso](microsoft_graph_paso_a_paso.md). La guía distingue las credenciales de Entra, los IDs de sitio/biblioteca/archivo y los permisos reales de las operaciones Excel. No basta con que la consulta funcione en Graph Explorer.
+
 ```env
 TELEGRAM_TOKEN=tu_token_de_telegram
 TELEGRAM_WEBHOOK_SECRET=tu_secreto_aleatorio_del_webhook

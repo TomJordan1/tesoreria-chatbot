@@ -97,10 +97,12 @@ Ver [configuración y activación del webhook protegido](webhook_telegram.md). N
 
 ---
 
-## 3. Trazabilidad de Configuración de Accesos (Microsoft Entra ID)
-Para permitir que el servidor en Python se comunique e inyecte datos autónomamente en el Excel de SharePoint a través de Microsoft Graph API, se realizó la siguiente configuración de infraestructura en la nube de Microsoft:
+## 3. Configuración de Microsoft Entra y compatibilidad pendiente de verificación
 
-1.  **Registro de Aplicación (App Registration):** Se registró una aplicación en el Centro de Administración de Microsoft Entra llamada `Tesoreria-chatbot-api`.
-2.  **Autenticación y Credenciales:** Se generó un *Secreto de cliente* (Client Secret) para habilitar el flujo de credenciales de cliente (Client Credentials flow). Esto permite la autenticación de tipo servidor a servidor.
-3.  **Gestión de Permisos (Graph API):** Durante las pruebas con Graph Explorer, se identificó que la inserción de datos arrojaba un error de autorización (HTTP 403 Forbidden). Para solucionarlo, se asignaron permisos de aplicación en Microsoft Graph, específicamente los de escritura y lectura de archivos/sitios (ej. `Files.ReadWrite.All` o `Sites.ReadWrite.All`).
-4.  **Consentimiento de Administrador (Admin Consent):** Finalmente, se otorgó el "Consentimiento de administrador en nombre de la organización" a los permisos solicitados. Este paso crítico autoriza a la aplicación a editar el archivo de Excel en SharePoint sin requerir que un usuario inicie sesión de forma interactiva.
+El código actual usa credenciales de aplicación con MSAL. La configuración descrita previamente en este documento fue un registro de aplicación llamado `Tesoreria-chatbot-api`, un secreto de cliente y permisos de aplicación con consentimiento administrativo. Esta revisión no ha inspeccionado el registro real ni ejecutado solicitudes con sus credenciales de producción.
+
+**Corrección de la afirmación anterior:** los permisos de aplicación `Files.ReadWrite.All` o `Sites.ReadWrite.All` y el consentimiento administrativo no garantizan acceso a las operaciones Excel. Microsoft marca **Application: Not supported** en [lectura del rango de una tabla](https://learn.microsoft.com/en-us/graph/api/table-range?view=graph-rest-1.0), [lectura de filas](https://learn.microsoft.com/en-us/graph/api/table-list-rows?view=graph-rest-1.0) y [adición de filas](https://learn.microsoft.com/en-us/graph/api/tablerowcollection-add?view=graph-rest-1.0). Esto afecta a la compatibilidad documentada del flujo `client_credentials` usado en `obtener_token_ms()`.
+
+La obtención de metadatos y la lectura de tablas deben probarse por separado. El éxito en Graph Explorer usa la identidad del usuario y no demuestra acceso de la aplicación. Si la integración falla por esta diferencia, debe evaluarse una autenticación soportada u otro mecanismo de acceso; agregar permisos de aplicación indiscriminadamente no lo resuelve.
+
+El procedimiento completo para descubrir sitio, biblioteca, ruta y archivos, y diagnosticar ambas identidades sin insertar registros, está en [Microsoft Graph paso a paso](microsoft_graph_paso_a_paso.md). Esta actualización corrige documentación; no migra la autenticación ni cambia el comportamiento del bot.

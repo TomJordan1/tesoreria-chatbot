@@ -31,6 +31,8 @@ pip install -r requirements.txt
 
 Crea un archivo `.env` en la raíz del proyecto:
 
+Obtén los valores `MS_*` siguiendo [Microsoft Graph paso a paso](microsoft_graph_paso_a_paso.md). Incluye la comprobación de la aplicación y la limitación documentada de autenticación para las tablas Excel; descubrir un ID con tu usuario no verifica el funcionamiento del bot.
+
 ```env
 TELEGRAM_TOKEN=tu_token_de_telegram
 TELEGRAM_WEBHOOK_SECRET=tu_secreto_aleatorio_del_webhook
@@ -82,6 +84,8 @@ Start Command: uvicorn main:app --host 0.0.0.0 --port $PORT
 ### 3. Variables de Entorno
 
 Agregar en Render:
+
+Consulta [la guía de Microsoft Graph](microsoft_graph_paso_a_paso.md) para completar cada identificador, diagnosticar errores y comprobar permisos antes de dar la integración por lista.
 
 ```env
 TELEGRAM_TOKEN=tu_token_de_telegram

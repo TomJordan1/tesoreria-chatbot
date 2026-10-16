@@ -56,10 +56,12 @@ tesoreria-chatbot/
 └── docs/                # Instalación, arquitectura, acceso y protección del webhook.
 ```
 
+Para configurar SharePoint desde cero, sigue [Microsoft Graph paso a paso](docs/microsoft_graph_paso_a_paso.md): incluye consultas, respuestas esperadas, solución de errores y comprobación de permisos.
+
 Consulta los detalles de operación y cambios en [la documentación de integración](docs/documentacion_integracion.md) y [la guía de producción](docs/instalacion_prod.md).
 
 ## Verificación y alcance actual
 
-La documentación describe el código del repositorio; no confirma por sí sola que esa versión esté desplegada en Render. La suite local se ejecuta con `python -m unittest discover -s tests -v` y sustituye las integraciones externas. Queda comprobar el acceso real de la aplicación a SharePoint y la recepción de Telegram después de configurar y desplegar.
+La documentación describe el código del repositorio; no confirma por sí sola que esa versión esté desplegada en Render. La suite local se ejecuta con `python -m unittest discover -s tests -v` y sustituye las integraciones externas. Queda comprobar el acceso real de la aplicación a SharePoint y la recepción de Telegram después de configurar y desplegar. Microsoft documenta que las operaciones de tablas Excel utilizadas no admiten permisos de aplicación, mientras el código actual usa `client_credentials`; [la guía de Graph](docs/microsoft_graph_paso_a_paso.md) explica esta incompatibilidad y cómo diagnosticarla. Un ID obtenido en Graph Explorer no demuestra compatibilidad de la autenticación del bot.
 
 Los campos del Excel contable y la plantilla del PDF se mantienen. La opción 5 no implementa un formato nuevo de informe por proyecto ni registra un historial de PDFs. La deduplicación de eventos por `update_id` sigue pendiente. Las imágenes existentes se conservan.
