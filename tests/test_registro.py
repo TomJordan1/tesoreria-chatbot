@@ -475,6 +475,12 @@ class PlantillaPDF(unittest.TestCase):
                 html = fpdf.return_value.write_html.call_args.args[0]
                 self.assertEqual("PRUEBA - SIN REGISTRO EN EXCEL" in html, prueba)
                 self.assertNotIn("{{aviso_prueba}}", html)
+                self.assertNotIn("{{proyecto_gestion}}", html)
+                self.assertNotIn("<strong>Proyecto:</strong>", html)
+        generador.generar_comprobante_pdf({**datos_validos(), "proyecto": "Proyecto <X>", "gestion": "2026"}, "ignorado.pdf")
+        html = fpdf.return_value.write_html.call_args.args[0]
+        self.assertIn("Proyecto &lt;X&gt;", html)
+        self.assertIn("<strong>Gestión:</strong> 2026", html)
 
 
 if __name__ == "__main__":

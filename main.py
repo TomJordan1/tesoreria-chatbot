@@ -4,6 +4,7 @@ import traceback
 import math
 import re
 import secrets
+from html import escape
 from uuid import uuid4
 from fastapi import FastAPI, Request, HTTPException
 from dotenv import load_dotenv
@@ -13,6 +14,8 @@ load_dotenv()
 from servicios import obtener_saldo_actual, extraer_datos_recibo_llm, guardar_en_excel
 from servicios import ErrorConsultaSaldo, ErrorValidacionOperacion, validar_operacion
 from servicios import usuario_autorizado
+from servicios import MS_CONFIG_ITEM_ID, obtener_destinos_usuario, validar_destino_actual
+from catalogo import ErrorCatalogo
 from generador_pdf import generar_comprobante_pdf
 
 app = FastAPI()
@@ -40,8 +43,14 @@ def mostrar_resumen_y_opciones(chat_id):
     state = user_states.get(chat_id)
     if not state: return
     d = state["datos_procesados"]
+    destino = state.get("destino")
+    ubicacion = (f"<b>Proyecto:</b> {escape(destino.nombre)}\n<b>Gestión:</b> {escape(destino.gestion)}\n"
+                 if destino else "")
+    opciones_registro = ("" if MS_CONFIG_ITEM_ID and not destino else
+                        "1) Registrar movimiento en Excel\n2) Registrar movimiento en Excel y generar PDF\n")
     resumen = (
         f"🧾 <b>Resumen de la operación:</b>\n\n"
+        f"{ubicacion}"
         f"<b>Fecha:</b> {d.get('fecha')}\n"
         f"<b>Concepto:</b> {d.get('concepto')}\n"
         f"<b>Tipo:</b> {d.get('tipo')} ({d.get('ing_eg')})\n"
@@ -51,8 +60,7 @@ def mostrar_resumen_y_opciones(chat_id):
         f"<b>Estado:</b> {d.get('estado')}\n"
         f"<b>Monto:</b> S/ {d.get('monto')}\n\n"
         f"¿Qué deseas hacer?\n"
-        f"1) Registrar movimiento en Excel\n"
-        f"2) Registrar movimiento en Excel y generar PDF\n"
+        f"{opciones_registro}"
         f"3) Editar datos\n"
         f"4) Alternar formato de fecha (PE ↔ USA)\n"
         f"5) Generar PDF sin registrar en Excel\n"
@@ -63,7 +71,8 @@ def mostrar_resumen_y_opciones(chat_id):
 def preparar_registro(chat_id):
     """Consulta el saldo antes de continuar; conserva la foto si Excel falla."""
     try:
-        saldo_actual = obtener_saldo_actual()
+        destino = user_states[chat_id].get("destino")
+        saldo_actual = obtener_saldo_actual(**({"destino": destino} if destino else {}))
     except ErrorConsultaSaldo:
         user_states[chat_id]["step"] = "consultar_saldo"
         enviar_mensaje(chat_id, "¡Chispas! No pude consultar el saldo de Excel. Conservé tu foto. Escribe 1 para reintentar, /solo_pdf para probar sin guardar o /cancelar para salir.")
@@ -76,6 +85,39 @@ def preparar_registro(chat_id):
     user_states[chat_id]["saldo_previo"] = saldo_actual
 
     continuar_registro(chat_id)
+
+
+def elegir_destino(chat_id, usuario_id, texto=""):
+    """Presenta únicamente proyectos permitidos; usa la gestión actual del catálogo."""
+    state = user_states[chat_id]
+    try:
+        destinos = obtener_destinos_usuario(usuario_id)
+    except ErrorCatalogo:
+        state["step"] = "elegir_proyecto"
+        enviar_mensaje(chat_id, "No pude consultar tus proyectos. Conservé la foto. Escribe /proyectos para reintentar, /solo_pdf para generar solo el PDF o /cancelar.")
+        return
+    elegido = None
+    if texto and texto != "/proyectos":
+        # Solo acepta una opción de esta lista, nunca IDs de archivos del mensaje.
+        seleccionables = state.get("opciones_proyectos", destinos)
+        coincidencias = [d for i, d in enumerate(seleccionables, 1)
+                        if texto.casefold() in (str(i), d.proyecto_id.casefold(), d.nombre.casefold())]
+        if len(coincidencias) == 1 and coincidencias[0] in destinos:
+            elegido = coincidencias[0]
+    elif len(destinos) == 1:
+        elegido = destinos[0]
+    if elegido:
+        state["destino"] = elegido
+        enviar_mensaje(chat_id, f"🐮 Usaremos <b>{escape(elegido.nombre)}</b>, gestión <b>{escape(elegido.gestion)}</b> (hoja {escape(elegido.hoja)}).")
+        preparar_registro(chat_id)
+        return
+    state["step"] = "elegir_proyecto"
+    state["opciones_proyectos"] = tuple(destinos)
+    opciones = "\n".join(f"{i}) {escape(d.nombre)} · gestión {escape(d.gestion)} · <code>{escape(d.proyecto_id)}</code>"
+                         for i, d in enumerate(destinos, 1))
+    enviar_mensaje(chat_id, ("¿A qué proyecto corresponde? Escribe su nombre, identificador o número:\n" + opciones
+                            if opciones else "Todavía no tienes un proyecto habilitado. Pídele al equipo de tesorería que lo configure.")
+                   + "\nTambién puedes usar /solo_pdf para generar el PDF sin registrar en Excel, o /cancelar.")
 
 
 def continuar_registro(chat_id):
@@ -190,9 +232,14 @@ async def telegram_webhook(request: Request):
         enviar_mensaje(chat_id, "¡Muu! Todavía no te conozco 🐮. Pídele al equipo de tesorería que te dé acceso. Escribe /mi_id y compárteles tu identificador.\n\nSi ya te habilitaron, los cambios pueden tardar hasta 2 minutos en reflejarse. Espera ese tiempo y vuelve a escribirme. ¡Muu!")
         return {"status": "ok"}
 
+    if MS_CONFIG_ITEM_ID and (message["chat"].get("type", "private") != "private" or int(chat_id) <= 0):
+        enviar_mensaje(chat_id, "Para registrar movimientos por proyecto, escríbeme por privado. ¡Muu! 🐮")
+        return {"status": "ok"}
+
     # --- 1. RECEPCIÓN DE IMAGEN ---
     if "photo" in message:
-        if chat_id in user_states:
+        solo_pdf = user_states.get(chat_id, {}).get("step") == "esperar_foto_pdf"
+        if chat_id in user_states and not solo_pdf:
             enviar_mensaje(
                 chat_id,
                 "⚠️ Ya tengo un comprobante en proceso.\n\n"
@@ -203,10 +250,16 @@ async def telegram_webhook(request: Request):
         user_states[chat_id] = {
             "file_id": message["photo"][-1]["file_id"],
             "caption": message.get("caption", ""),
-            "contexto_manual": {}
+            "contexto_manual": {},
+            "usuario_id": usuario_id,
+            "modo_solo_pdf": solo_pdf,
         }
-        
-        preparar_registro(chat_id)
+        if solo_pdf:
+            continuar_registro(chat_id)
+        elif MS_CONFIG_ITEM_ID:
+            elegir_destino(chat_id, usuario_id)
+        else:
+            preparar_registro(chat_id)
         return {"status": "ok"}
 
     # --- 2. MANEJO DE TEXTO ---
@@ -246,8 +299,24 @@ async def telegram_webhook(request: Request):
         return {"status": "ok"}
 
     state = user_states.get(chat_id)
+    if text.lower() == "/solo_pdf" and not state:
+        user_states[chat_id] = {"step": "esperar_foto_pdf", "usuario_id": usuario_id}
+        enviar_mensaje(chat_id, "Envíame la foto y prepararemos un PDF sin guardar movimientos en Excel. Puedes añadir la explicación en la leyenda.")
+        return {"status": "ok"}
     if not state:
-        enviar_mensaje(chat_id, "¡Hola! Soy Toribot, tu asistente de tesorería. Envíame la foto de tu comprobante o captura para empezar.\n\n💡 <i>Tip: Si me pones toda la explicación en la leyenda de la foto, vamos más rápido.</i>\n🛑 <i>Tip: Escribe <b>/cancelar</b> en cualquier momento si quieres abortar y empezar de nuevo.</i>\n❓ <i>Tip: Escribe <b>/ayuda</b> para ver mi infografía explicativa.</i>")
+        enviar_mensaje(chat_id, "¡Hola! Soy Toribot, tu asistente de tesorería. Envíame la foto de tu comprobante o captura para empezar.\n\nPara generar únicamente el PDF, escribe /solo_pdf antes de enviar la foto.\n💡 <i>Tip: Si me pones toda la explicación en la leyenda de la foto, vamos más rápido.</i>\n🛑 <i>Tip: Escribe <b>/cancelar</b> en cualquier momento si quieres abortar y empezar de nuevo.</i>\n❓ <i>Tip: Escribe <b>/ayuda</b> para ver mi infografía explicativa.</i>")
+        return {"status": "ok"}
+
+    if state.get("step") == "esperar_foto_pdf":
+        enviar_mensaje(chat_id, "Envíame la foto para generar el PDF, o usa /cancelar.")
+        return {"status": "ok"}
+
+    if state.get("step") == "elegir_proyecto":
+        if text.lower() == "/solo_pdf":
+            state["modo_solo_pdf"] = True
+            continuar_registro(chat_id)
+        else:
+            elegir_destino(chat_id, usuario_id, text)
         return {"status": "ok"}
 
     if text.lower() == "/solo_pdf" and state.get("step") in ("consultar_saldo", "pedir_saldo_base"):
@@ -333,6 +402,16 @@ async def telegram_webhook(request: Request):
     # Bloque: Restauración del Modo de Edición
     if state.get("step") == "confirmar":
         if text in ["1", "2"]:
+            destino = state.get("destino")
+            if MS_CONFIG_ITEM_ID:
+                if not destino or state.get("modo_solo_pdf"):
+                    enviar_mensaje(chat_id, "Este comprobante está preparado solo para PDF. Usa 5 para exportarlo. Para registrarlo, cancela y envía la foto eligiendo un proyecto.")
+                    return {"status": "ok"}
+                try:
+                    validar_destino_actual(usuario_id, destino)
+                except ErrorCatalogo:
+                    enviar_mensaje(chat_id, "No guardé nada. No pude validar el proyecto, su gestión actual o tu permiso. Si cambiaron, usa /cancelar y envía de nuevo la foto; si es un fallo de conexión, puedes reintentar. También puedes generar solo el PDF con 5.")
+                    return {"status": "ok"}
             try:
                 validar_operacion(state["datos_procesados"])
             except ErrorValidacionOperacion as e:
@@ -340,7 +419,7 @@ async def telegram_webhook(request: Request):
                 return {"status": "ok"}
 
             try:
-                saldo_actual = obtener_saldo_actual()
+                saldo_actual = obtener_saldo_actual(**({"destino": destino} if destino else {}))
             except ErrorConsultaSaldo:
                 enviar_mensaje(chat_id, "No pude actualizar el saldo de Excel. No guardé la operación y tus datos siguen disponibles. Escribe 1 para guardar o 2 para guardar con PDF cuando quieras reintentar.")
                 return {"status": "ok"}
@@ -352,7 +431,10 @@ async def telegram_webhook(request: Request):
                 return {"status": "ok"}
 
             try:
-                datos_finales = guardar_en_excel(state["datos_procesados"], state["saldo_previo"], state.get("fecha_usa", False))
+                datos_finales = guardar_en_excel(state["datos_procesados"], state["saldo_previo"], state.get("fecha_usa", False), **({"destino": destino} if destino else {}))
+            except (ErrorCatalogo, ErrorConsultaSaldo):
+                enviar_mensaje(chat_id, "No guardé nada: no pude verificar la hoja, las columnas o la numeración del proyecto. Consulta al área de TIC. Tus datos siguen disponibles para generar solo el PDF con 5.")
+                return {"status": "ok"}
             except ErrorValidacionOperacion as e:
                 enviar_mensaje(chat_id, f"No guardé la operación. {e} Usa la opción 3 para corregirla.")
                 return {"status": "ok"}
@@ -392,6 +474,9 @@ async def telegram_webhook(request: Request):
                 "saldo": "No calculado (prueba)",
                 "solo_pdf": True,
             }
+            destino = state.get("destino")
+            if destino:
+                datos_prueba.update(proyecto=destino.nombre, gestion=destino.gestion)
             try:
                 enviar_comprobante_pdf(chat_id, state, datos_prueba, solo_pdf=True)
                 enviar_mensaje(chat_id, "🧪 PDF de prueba enviado. No se guardó nada en Excel. Puedes seguir editando o usar /cancelar para terminar.")

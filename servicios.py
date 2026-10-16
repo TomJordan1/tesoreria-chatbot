@@ -8,6 +8,7 @@ import requests
 from openai import OpenAI
 from datetime import datetime, timezone, timedelta
 import msal
+from catalogo import Catalogo, ErrorCatalogo, leer_tablas_xlsx
 
 # --- PROVEEDOR DE IA (optativo; conserva Groq en instalaciones existentes) ---
 IA_PROVEEDOR = (os.getenv("IA_PROVEEDOR") or "groq").strip().lower()
@@ -102,6 +103,8 @@ MS_DRIVE_ID = os.getenv("MS_DRIVE_ID")
 MS_ITEM_ID = os.getenv("MS_ITEM_ID")
 MS_USUARIOS_ITEM_ID = os.getenv("MS_USUARIOS_ITEM_ID")
 MS_TABLE_NAME = os.getenv("MS_TABLE_NAME", "TablaFinanzas")
+MS_CONFIG_ITEM_ID = (os.getenv("MS_CONFIG_ITEM_ID") or "").strip()
+_cache_catalogo = {"valor": None, "vence": 0.0}
 
 # Lista de acceso en un archivo distinto, dentro de la misma biblioteca.
 TABLA_USUARIOS = "USUARIOS_AUTORIZADOS"
@@ -182,6 +185,11 @@ def usuario_autorizado(usuario_id):
     usuario_id = _normalizar_telegram_id(usuario_id)
     if usuario_id is None:
         return False
+    if MS_CONFIG_ITEM_ID:
+        try:
+            return obtener_catalogo().usuarios.get(usuario_id, False)
+        except ErrorCatalogo:
+            return False
     if time.monotonic() >= _cache_usuarios["vence"]:
         try:
             ids = obtener_usuarios_autorizados()
@@ -193,6 +201,91 @@ def usuario_autorizado(usuario_id):
             duracion = 30
         _cache_usuarios.update(ids=ids, vence=time.monotonic() + duracion)
     return usuario_id in _cache_usuarios["ids"]
+
+
+def obtener_catalogo(forzar=False):
+    """Lee una única instantánea del Excel central, sin escribirlo."""
+    if not MS_CONFIG_ITEM_ID:
+        raise ErrorCatalogo("El modo de proyectos no está configurado.")
+    if not forzar and time.monotonic() < _cache_catalogo["vence"]:
+        if _cache_catalogo["valor"] is None:
+            raise ErrorCatalogo("El catálogo no está disponible; reintenta en 30 segundos.")
+        return _cache_catalogo["valor"]
+    try:
+        if MS_CONFIG_ITEM_ID == MS_ITEM_ID:
+            raise ErrorCatalogo("El Excel central debe ser distinto del contable.")
+        token = obtener_token_ms()
+        if not token:
+            raise ErrorCatalogo("No se pudo autenticar para leer el catálogo.")
+        from urllib.parse import quote
+        url = f"https://graph.microsoft.com/v1.0/drives/{quote(MS_DRIVE_ID or '', safe='')}/items/{quote(MS_CONFIG_ITEM_ID, safe='')}/content"
+        respuesta = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=15)
+        respuesta.raise_for_status()
+        valor = Catalogo(leer_tablas_xlsx(respuesta.content), (MS_DRIVE_ID, MS_CONFIG_ITEM_ID))
+    except Exception as e:
+        _cache_catalogo.update(valor=None, vence=time.monotonic() + 30)
+        print(f"No se pudo leer el catálogo de proyectos ({type(e).__name__}).")
+        raise ErrorCatalogo("No se pudo leer la configuración. Consulta al área de TIC.") from e
+    _cache_catalogo.update(valor=valor, vence=time.monotonic() + 120)
+    return valor
+
+
+def obtener_destinos_usuario(usuario_id):
+    return obtener_catalogo().destinos_usuario(usuario_id)
+
+
+def validar_destino_actual(usuario_id, destino):
+    # No reutiliza permisos/gestiones vencidos ni redirige una operación ya iniciada.
+    return obtener_catalogo(forzar=True).validar_destino(usuario_id, destino)
+
+
+def _url_tabla(destino=None):
+    if destino is not None:
+        return destino.url_tabla()
+    if MS_CONFIG_ITEM_ID:
+        raise ErrorCatalogo("En modo de proyectos es obligatorio seleccionar un destino.")
+    return f"https://graph.microsoft.com/v1.0/sites/{MS_SITE_ID}/drives/{MS_DRIVE_ID}/items/{MS_ITEM_ID}/workbook/tables/{MS_TABLE_NAME}"
+
+
+def _leer_filas_excel(url, headers):
+    """Sigue la paginación de la misma tabla antes de calcular saldo/numeración."""
+    filas, vistas = [], set()
+    siguiente = url
+    while siguiente:
+        if siguiente in vistas or siguiente.split("?", 1)[0] != url:
+            raise ValueError("Paginación de Excel inválida.")
+        vistas.add(siguiente)
+        respuesta = requests.get(siguiente, headers=headers, timeout=15)
+        if respuesta.status_code != 200:
+            raise ValueError("Excel no respondió correctamente.")
+        datos = respuesta.json()
+        if not isinstance(datos.get("value"), list):
+            raise ValueError("Excel no devolvió filas válidas.")
+        filas.extend(datos["value"])
+        siguiente = datos.get("@odata.nextLink")
+    return filas
+
+
+def verificar_tabla_destino(destino):
+    """Verifica hoja y columnas antes de enviar las 13 posiciones al nuevo destino."""
+    import unicodedata
+    token = obtener_token_ms()
+    if not token:
+        raise ErrorCatalogo("No se pudo verificar la tabla de destino.")
+    headers = {"Authorization": f"Bearer {token}"}
+    respuesta = requests.get(destino.url_tabla() + "/worksheet", headers=headers, timeout=15)
+    respuesta.raise_for_status()
+    if respuesta.json().get("name") != destino.hoja:
+        raise ErrorCatalogo("La tabla no pertenece a la hoja configurada para esta gestión.")
+    respuesta = requests.get(destino.url_tabla() + "/headerRowRange", headers=headers, timeout=15)
+    respuesta.raise_for_status()
+    valores = respuesta.json().get("values", [])
+    esperados = ["codigo", "fecha", "nrooperacion", "concepto", "tipo", "ingeg",
+                 "motivo", "acreedor", "deudor", "estado", "ingreso", "egreso", "saldo"]
+    def normalizar(valor):
+        return re.sub(r"[^a-z0-9]", "", unicodedata.normalize("NFKD", str(valor).lower()).encode("ascii", "ignore").decode())
+    if len(valores) != 1 or [normalizar(v) for v in valores[0]] != esperados:
+        raise ErrorCatalogo("La tabla de destino no tiene las 13 columnas acordadas en el orden correcto.")
 
 
 class ErrorConsultaSaldo(Exception):
@@ -219,7 +312,7 @@ def validar_operacion(datos: dict) -> tuple:
     return monto, clasificacion.strip().lower()
 
 
-def obtener_saldo_actual():
+def obtener_saldo_actual(destino=None):
     """Consulta la última fila de la tabla en Excel para obtener el último saldo."""
     try:
         token = obtener_token_ms()
@@ -234,18 +327,10 @@ def obtener_saldo_actual():
     }
     
     # Obtener las filas de la tabla
-    url = f"https://graph.microsoft.com/v1.0/sites/{MS_SITE_ID}/drives/{MS_DRIVE_ID}/items/{MS_ITEM_ID}/workbook/tables/{MS_TABLE_NAME}/rows"
+    url = _url_tabla(destino) + "/rows"
     
     try:
-        response = requests.get(url, headers=headers, timeout=15)
-        if response.status_code != 200:
-            print(f"Error consultando Excel: {response.text}")
-            raise ErrorConsultaSaldo("Excel no respondió correctamente.")
-            
-        data = response.json()
-        filas = data["value"]
-        if not isinstance(filas, list):
-            raise ErrorConsultaSaldo("La respuesta de Excel no contiene filas válidas.")
+        filas = _leer_filas_excel(url, headers)
         
         if not filas:
             return None # Tabla vacía
@@ -416,7 +501,7 @@ Devuelve exclusivamente un JSON válido con esta estructura:
         return {"error": True, "mensaje": msg} if msg else {"error": True}
 
 
-def calcular_codigo_y_nro(fecha_str: str, formato_usa: bool = False) -> tuple:
+def calcular_codigo_y_nro(fecha_str: str, formato_usa: bool = False, destino=None) -> tuple:
     """Calcula el autoincremental del día consultando las filas de Excel."""
     meses_letras = ["E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"]
     try:
@@ -438,11 +523,10 @@ def calcular_codigo_y_nro(fecha_str: str, formato_usa: bool = False) -> tuple:
     
     if token:
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
-        url = f"https://graph.microsoft.com/v1.0/sites/{MS_SITE_ID}/drives/{MS_DRIVE_ID}/items/{MS_ITEM_ID}/workbook/tables/{MS_TABLE_NAME}/rows"
+        url = _url_tabla(destino) + "/rows"
         try:
-            response = requests.get(url, headers=headers, timeout=15)
-            if response.status_code == 200:
-                filas = response.json().get("value", [])
+            filas = _leer_filas_excel(url, headers)
+            if filas:
                 conteo_hoy = 0
                 for fila in filas:
                     valores = fila.get("values", [[]])[0]
@@ -456,19 +540,40 @@ def calcular_codigo_y_nro(fecha_str: str, formato_usa: bool = False) -> tuple:
                             pass
                 nro_operacion_dia = conteo_hoy + 1
         except Exception as e:
+            if destino is not None:
+                raise ErrorConsultaSaldo("No se pudo calcular la numeración del destino.") from e
             print(f"Error calculando autoincremental: {e}")
+    elif destino is not None:
+        raise ErrorConsultaSaldo("No se pudo autenticar para calcular la numeración.")
 
     nro_str = f"{nro_operacion_dia:02d}" 
     codigo = f"{letra_mes}{fecha_ddmmyy}{nro_str}"
     
     return codigo, nro_operacion_dia
 
-def guardar_en_excel(datos: dict, saldo_previo: float, formato_usa: bool = False) -> dict:
+def guardar_en_excel(datos: dict, saldo_previo: float, formato_usa: bool = False, destino=None) -> dict:
     """Guarda directamente en el Excel de SharePoint usando Graph API."""
     monto_float, clasificacion = validar_operacion(datos)
+    if MS_CONFIG_ITEM_ID and destino is None:
+        raise ErrorCatalogo("No hay un proyecto de destino seleccionado.")
     # El formato final se determina por: variable de entorno OR toggle del usuario
     usar_usa = formato_usa or FORMATO_FECHA_EXCEL == "US"
-    codigo, nro_operacion_dia = calcular_codigo_y_nro(datos["fecha"], usar_usa)
+    if destino is not None:
+        try:
+            verificar_tabla_destino(destino)
+        except Exception as e:
+            raise ErrorCatalogo("No se pudo verificar la hoja y la estructura de su tabla.") from e
+        datos = datos.copy()
+        try:
+            fecha = datetime.strptime(datos["fecha"], "%m/%d/%Y" if formato_usa else "%d/%m/%Y")
+        except (ValueError, TypeError, KeyError) as e:
+            raise ErrorValidacionOperacion("La fecha no es válida para el formato seleccionado.") from e
+        usar_usa = destino.formato_fecha == "US"
+        datos["fecha"] = fecha.strftime("%m/%d/%Y" if usar_usa else "%d/%m/%Y")
+        codigo, nro_operacion_dia = calcular_codigo_y_nro(datos["fecha"], usar_usa, destino=destino)
+        datos.update(proyecto=destino.nombre, gestion=destino.gestion)
+    else:
+        codigo, nro_operacion_dia = calcular_codigo_y_nro(datos["fecha"], usar_usa)
     
     ingreso_val = 0
     egreso_val = 0
@@ -515,7 +620,7 @@ def guardar_en_excel(datos: dict, saldo_previo: float, formato_usa: bool = False
         "values": [fila_nueva]
     }
     
-    url = f"https://graph.microsoft.com/v1.0/sites/{MS_SITE_ID}/drives/{MS_DRIVE_ID}/items/{MS_ITEM_ID}/workbook/tables/{MS_TABLE_NAME}/rows/add"
+    url = _url_tabla(destino) + "/rows/add"
     
     response = requests.post(url, headers=headers, json=payload, timeout=15)
     response.raise_for_status() 
