@@ -14,12 +14,23 @@ Este chatbot de tesorería de Telegram, diseñado para la gestión y automatizac
 
 El bot recibe fotografías de recibos, boletas o facturas, utiliza un Modelo de Lenguaje Visual (VLM) para comprender e inyectar la información en una base de datos centralizada en SharePoint a través de Microsoft Graph API, y ofrece la capacidad opcional de generar al instante un comprobante de validación en PDF procesado 100% de manera local.
 
+## Alcance y operación sin costo adicional
+
+El proyecto está pensado para pocos usuarios y uso ocasional, utilizando el plan gratuito de Render y los modelos disponibles en el plan gratuito de Groq. El objetivo es no generar gastos adicionales por alojar el bot ni por procesar comprobantes, aprovechando el entorno Microsoft 365 ya disponible en la organización.
+
+Se aceptan los tiempos de arranque tras el reposo de Render y los límites de uso de Groq. Las sesiones son temporales y se mantienen en memoria: una operación sin confirmar puede perderse al reiniciar o suspenderse el proceso. En ese caso se debe reenviar la foto. El aviso de reposo se intenta enviar durante el apagado, pero no está garantizado. Los registros ya guardados permanecen en Excel de SharePoint.
+
+La arquitectura actual no requiere una base de datos de sesiones, colas externas ni servicios de pago adicionales. Las mejoras deben priorizar la integridad de los registros y mantener este alcance.
+
 ## ✨ Características
 * **Procesamiento de Imágenes con IA:** Pipeline de dos pasos: (1) un modelo de visión transcribe el texto del comprobante, y (2) un modelo de texto interpreta y estructura los datos en un esquema JSON. Los modelos son configurables desde un bloque centralizado en `servicios.py`.
 * **Flujo Conversacional Interactivo:** Sistema dinámico que permite al usuario confirmar los datos extraídos, editarlos manualmente en bloque mediante un formato estructurado con signos de interrogación (`?`) o cancelar la operación antes de registrar.
+* **Validación antes de Guardar:** El monto debe ser numérico, finito y mayor que cero; Ing/Eg debe ser Ingreso o Egreso. Los datos inválidos se conservan para corregirlos con la opción 3.
+* **Errores Diferenciados:** Una falla consultando Excel permite reintentar sin pedir un saldo inicial nuevo. Si falla el PDF después de guardar, el bot aclara que el registro ya existe y no debe repetirse.
+* **PDF de Prueba sin Registro:** La opción 5 genera el comprobante sin guardar en Excel y lo marca como prueba. Si falta el saldo inicial o falla su consulta, `/solo_pdf` permite continuar para probar. Los datos quedan disponibles para editar o cancelar.
 * **Asignación Correlativa:** Generación automática de un índice incremental (`ID`) en la base de datos para facilitar auditorías de gastos futuros.
-* **Generación Local de PDF Externa:** Compilación asíncrona y ultra-rápida de comprobantes en PDF basada en un archivo de diseño separado (`plantilla.html`) usando la memoria RAM, eliminando dependencias pesadas y cuotas limitadas de almacenamiento en la nube.
-* **Limpieza Inmediata de Almacenamiento:** Política de borrado en tiempo real que elimina los PDFs locales del servidor inmediatamente después de ser despachados por Telegram, manteniendo el uso de disco del servidor en 0 MB de forma persistente.
+* **Generación Local de PDF:** Creación de comprobantes con `fpdf2` y una plantilla separada (`plantilla.html`), con la imagen original en una segunda página y archivos temporales locales durante el envío.
+* **Limpieza de Almacenamiento:** Tras generar y enviar el PDF, o si falla el proceso, se intenta borrar tanto el PDF como la imagen temporal del servidor.
 
 ## 🛠️ Stack Tecnológico
 * **Core:** Python 3.11+ & FastAPI (servidor web asíncrono gestionado con Uvicorn).
@@ -39,3 +50,6 @@ tesoreria-chatbot/
 ├── **.env               # Variables de entorno y tokens de autenticación estrictamente secretos (ignorado en git).
 ├── infografia.png       # Imagen guía del flujo del chatbot.
 └── logo.png             # Imagen de identidad visual del bot para documentación.
+```
+
+Consulta los detalles de operación y cambios en [la documentación de integración](docs/documentacion_integracion.md) y [la guía de producción](docs/instalacion_prod.md).

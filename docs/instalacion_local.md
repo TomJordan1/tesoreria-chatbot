@@ -103,3 +103,5 @@ Si todo salió bien, Telegram responderá:
 ### ✅ Listo
 
 Ahora puedes enviar fotos o mensajes a tu bot desde Telegram y el servidor local procesará las solicitudes en tiempo real.
+
+Para probar sin insertar registros en Excel, elige **5) Solo generar PDF de prueba (sin guardar)** en el resumen. Si la consulta inicial de saldo falla o la tabla está vacía, usa `/solo_pdf` para continuar sin saldo inicial. El PDF lleva un aviso de prueba; puedes editar los datos o terminar con `/cancelar`. Las opciones 1 y 2 sí guardan en la tabla configurada, incluso cuando el servidor corre localmente.

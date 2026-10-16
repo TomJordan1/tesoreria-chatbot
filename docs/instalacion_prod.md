@@ -48,9 +48,17 @@ FORMATO_FECHA_EXCEL=PE
 
 ## ☁️ Producción (Deploy en Render)
 
+Este proyecto utiliza Render y Groq en sus planes gratuitos, para pocos usuarios y uso ocasional. No requiere servicios adicionales de pago; la integración con SharePoint utiliza el entorno Microsoft 365 existente de la organización.
+
+Las sesiones se guardan únicamente en memoria. Si Render suspende o reinicia el proceso, las operaciones sin confirmar pueden perderse y habrá que reenviar la foto. Es una limitación aceptada de este despliegue. El primer acceso tras el reposo puede demorar; el aviso de apagado es un intento y no está garantizado. También se aceptan los límites del plan gratuito de Groq.
+
+No se agregaron variables de entorno ni dependencias para las correcciones de validación y manejo de errores descritas en la documentación de integración.
+
+Para experimentar sin escribir en SharePoint, envía una foto, completa los datos y elige **5) Solo generar PDF de prueba (sin guardar)** en el resumen. Si Excel está vacío o falla la consulta inicial de saldo, usa `/solo_pdf` para continuar sin saldo inicial. El PDF se marca como prueba y la sesión permanece abierta para editar o cancelar. Las opciones 1 y 2 sí guardan registros reales.
+
 ### 1. Crear Web Service
 
-En :contentReference[oaicite:0]{index=0}:
+En Render:
 
 - Crear un nuevo **Web Service**
 - Conectar el repositorio de GitHub

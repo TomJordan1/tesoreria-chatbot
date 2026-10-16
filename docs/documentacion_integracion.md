@@ -16,6 +16,30 @@ El sistema se compone de cuatro nodos principales que interactúan de forma secu
 
 A continuación se detallan las modificaciones realizadas respecto a la versión anterior del sistema (previo a la versión producción final).
 
+### Criterios de operación
+
+El bot se utiliza por un grupo reducido, de forma ocasional. Se usan el plan gratuito de Render y modelos del plan gratuito de Groq para evitar gastos adicionales, junto con el entorno Microsoft 365 existente. Se aceptan el reposo y arranque de Render, los límites de Groq y las sesiones temporales en memoria. No se requiere persistencia de sesiones ni infraestructura externa adicional. Si el proceso se reinicia, puede ser necesario reenviar los comprobantes todavía sin confirmar; el aviso de apagado no está garantizado.
+
+### Actualización del 16 de octubre de 2026: integridad del registro
+
+* **Validación de monto y clasificación:** Antes de consultar el saldo para guardar y también dentro de `guardar_en_excel`, se exige un monto numérico, finito y mayor que cero y una clasificación Ingreso o Egreso. Se toleran mayúsculas y espacios exteriores en la clasificación. No se convierten datos inválidos a cero ni clasificaciones desconocidas a egreso. La sesión permanece abierta para editar con la opción 3.
+* **Saldo vacío frente a error:** `obtener_saldo_actual` devuelve `None` únicamente para una tabla sin filas o con filas vacías. Los fallos de autenticación, conexión, respuesta o registros sin saldo válido generan `ErrorConsultaSaldo`. Al recibir la foto, se conserva para reintentar con 1; al confirmar, se conservan los datos y no se escribe con un saldo desactualizado cuando falla la consulta. Un saldo inicial no puede ser NaN ni infinito.
+* **Guardado separado del PDF:** Tras una escritura confirmada, la sesión se cierra antes de generar o enviar el respaldo. Si falla ese paso, se informa que la operación ya está en Excel y no debe registrarse otra vez. El envío del PDF tiene timeout y comprueba tanto el estado HTTP como la confirmación de Telegram; se intenta limpiar los archivos temporales incluso al fallar.
+* **Escritura sin confirmación:** Si falla la escritura, no se afirma que Excel no guardó. La sesión pasa a `verificar_guardado` y bloquea nuevos intentos de inserción desde esa sesión hasta que se revise Excel y se use `/cancelar`. Esto reduce el riesgo de duplicar una escritura cuyo resultado se desconoce; no constituye una garantía de deduplicación persistente.
+* **Alcance conservado:** No se cambian los modelos, el formato de fechas ni el esquema de 13 columnas de Excel. No se agregan dependencias de producción o servicios de pago.
+
+### Exportar PDF sin registrar (opción 5)
+
+La opción **5) Solo generar PDF de prueba (sin guardar)** del resumen genera y envía el comprobante sin consultar saldos, calcular correlativos ni insertar filas en Excel durante la exportación. Las opciones 1 y 2 conservan el guardado habitual. Se valida el monto y la clasificación también para exportar.
+
+El documento lleva el aviso **PRUEBA - SIN REGISTRO EN EXCEL**, un identificador temporal `PRUEBA_...`, número de operación sin registro y saldo no calculado. Incluye la imagen del comprobante como el respaldo normal. Los datos originales se conservan para editar, volver a exportar o confirmar un registro real posteriormente; `/cancelar` termina la sesión. Si falla la exportación, se puede reintentar con 5. Se limpian los archivos temporales tanto al finalizar como al fallar.
+
+Si la consulta inicial de saldo falla o Excel está vacío, `/solo_pdf` permite continuar con la foto sin introducir saldo inicial. Después de procesarla, se elige 5. Si luego se decide guardar con 1 o 2 y la tabla sigue vacía, se solicita el saldo inicial y se vuelve al resumen sin repetir el OCR. La exportación de un comprobante ya procesado no llama a Groq otra vez.
+
+### Verificación local
+
+Ejecutar `python -m unittest discover -s tests -v` desde la raíz. Las pruebas usan la biblioteca estándar y sustituyen las integraciones externas, sin consumir cuota de Groq, enviar mensajes ni escribir en SharePoint. Cubren validación, conservación de sesiones ante errores, reintento de consulta de saldo, guardado de ingresos/egresos, incertidumbre de escritura, fallos del PDF, exportación sin acceso a Excel y aviso de prueba en la plantilla. No reemplazan una prueba de integración con las credenciales y servicios reales ni una revisión visual del PDF renderizado.
+
 ### 2.1 Backend y Bot de Telegram (Python)
 *   **Manejo de Estados de Sesión:** Se corrigió el orden de evaluación en el bucle principal. Los comandos `/ayuda` y `/cancelar` ahora se procesan antes de validar la existencia de un estado activo, permitiendo su ejecución global en cualquier momento de la conversación.
 *   **Comando de Ayuda:** Se implementó el comando `/ayuda` que renderiza una infografía almacenada localmente en el repositorio (`infografia.png`) utilizando el método `sendPhoto` de la API de Telegram.
