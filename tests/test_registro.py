@@ -433,7 +433,7 @@ class AccesoToribio(unittest.TestCase):
 
     def test_desconocido_solo_recibe_mensaje_de_acceso(self):
         main.user_states["1"] = {"step": "confirmar"}
-        esperado = "¡Muu! Todavía no te conozco 🐮. Pídele al equipo de tesorería que te dé acceso. Escribe /mi_id y compárteles tu identificador."
+        esperado = "¡Muu! Todavía no te conozco 🐮. Pídele al equipo de tesorería que te dé acceso. Escribe /mi_id y compárteles tu identificador.\n\nSi ya te habilitaron, los cambios pueden tardar hasta 2 minutos en reflejarse. Espera ese tiempo y vuelve a escribirme. ¡Muu!"
         for texto in ("Hola", "/start", "/ayuda", "/cancelar", "/solo_pdf", "1", "2", "3", "5"):
             with self.subTest(texto=texto):
                 self.enviar(texto, usuario_id=123)

@@ -38,6 +38,8 @@ Cualquier persona puede ejecutar `/mi_id`, incluso cuando no se logra leer Excel
 Si alguien no está habilitado, cualquier otro mensaje, foto o comando recibe:
 
 > ¡Muu! Todavía no te conozco 🐮. Pídele al equipo de tesorería que te dé acceso. Escribe /mi_id y compárteles tu identificador.
+>
+> Si ya te habilitaron, los cambios pueden tardar hasta 2 minutos en reflejarse. Espera ese tiempo y vuelve a escribirme. ¡Muu!
 
 Eso incluye ayuda, cancelación, registro y exportación de PDF de prueba. No se procesa la foto, no se consume cuota de Groq ni se modifica una sesión por mensajes de personas sin acceso. `/mi_id` tampoco altera una operación en curso. La identificación usa el remitente del mensaje, no el ID del chat o grupo.
 

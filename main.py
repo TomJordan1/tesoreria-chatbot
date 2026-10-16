@@ -187,7 +187,7 @@ async def telegram_webhook(request: Request):
         enviar_mensaje(chat_id, f"Tu identificador de Telegram es: <code>{usuario_id}</code>\nCompártelo con el equipo de tesorería para que puedan darte acceso. ¡Muu! 🐮")
         return {"status": "ok"}
     if type(usuario_id) is not int or usuario_id <= 0 or remitente.get("is_bot", False) or not usuario_autorizado(usuario_id):
-        enviar_mensaje(chat_id, "¡Muu! Todavía no te conozco 🐮. Pídele al equipo de tesorería que te dé acceso. Escribe /mi_id y compárteles tu identificador.")
+        enviar_mensaje(chat_id, "¡Muu! Todavía no te conozco 🐮. Pídele al equipo de tesorería que te dé acceso. Escribe /mi_id y compárteles tu identificador.\n\nSi ya te habilitaron, los cambios pueden tardar hasta 2 minutos en reflejarse. Espera ese tiempo y vuelve a escribirme. ¡Muu!")
         return {"status": "ok"}
 
     # --- 1. RECEPCIÓN DE IMAGEN ---
