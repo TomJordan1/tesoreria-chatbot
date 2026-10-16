@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/Groq_AI-f55036?style=for-the-badge&logo=groq&logoColor=white" alt="Groq AI">
 </p>
 
-Este chatbot de tesorería de Telegram, diseñado para la gestión y automatización del registro de gastos en tiempo real para proyectos y auditorías internas de grupos estudiantiles. 
+Este chatbot de tesorería de Telegram está diseñado para la gestión y automatización del registro de movimientos para proyectos y auditorías internas de grupos estudiantiles.
 
 El bot recibe fotografías de recibos, boletas o facturas, utiliza un Modelo de Lenguaje Visual (VLM) para comprender e inyectar la información en una base de datos centralizada en SharePoint a través de Microsoft Graph API, y ofrece la capacidad opcional de generar al instante un comprobante de validación en PDF procesado 100% de manera local.
 
@@ -30,7 +30,7 @@ La arquitectura actual no requiere una base de datos de sesiones, colas externas
 * **Validación antes de Guardar:** El monto debe ser numérico, finito y mayor que cero; Ing/Eg debe ser Ingreso o Egreso. Los datos inválidos se conservan para corregirlos con la opción 3.
 * **Errores Diferenciados:** Una falla consultando Excel permite reintentar sin pedir un saldo inicial nuevo. Si falla el PDF después de guardar, el bot aclara que el registro ya existe y no debe repetirse.
 * **PDF sin Registro:** La opción 5, «Generar PDF sin registrar en Excel», genera el comprobante sin guardar en Excel y lo marca como prueba. Si falta el saldo inicial o falla su consulta, `/solo_pdf` permite continuar para probar. Los datos quedan disponibles para editar o cancelar.
-* **Asignación Correlativa:** Generación automática de un índice incremental (`ID`) en la base de datos para facilitar auditorías de gastos futuros.
+* **Asignación Correlativa:** Python calcula el número de operación del día consultando las filas de Excel y genera el código mostrado en el mensaje y el PDF. La escritura deja `CÓDIGO` y `SALDO` a las fórmulas del archivo contable; esos valores calculados por Excel no se vuelven a leer para generar el PDF.
 * **Generación Local de PDF:** Creación de comprobantes con `fpdf2` y una plantilla separada (`plantilla.html`), con la imagen original en una segunda página y archivos temporales locales durante el envío.
 * **Limpieza de Almacenamiento:** Tras generar y enviar el PDF, o si falla el proceso, se intenta borrar tanto el PDF como la imagen temporal del servidor.
 
@@ -49,9 +49,17 @@ tesoreria-chatbot/
 ├── generador_pdf.py     # Módulo encargado de leer el HTML, inyectar variables y compilar el PDF local.
 ├── plantilla.html       # Molde de diseño y estructura visual con etiquetas {{campo}} para el PDF.
 ├── requirements.txt     # Dependencias y librerías de Python requeridas para producción.
-├── **.env               # Variables de entorno y tokens de autenticación estrictamente secretos (ignorado en git).
+├── .env                 # Variables de entorno y credenciales (ignorado en git; crear localmente).
 ├── infografia.png       # Imagen guía del flujo del chatbot.
-└── logo.png             # Imagen de identidad visual del bot para documentación.
+├── logo.png             # Imagen de identidad visual del bot para documentación y PDF.
+├── tests/               # Pruebas locales con integraciones simuladas.
+└── docs/                # Instalación, arquitectura, acceso y protección del webhook.
 ```
 
 Consulta los detalles de operación y cambios en [la documentación de integración](docs/documentacion_integracion.md) y [la guía de producción](docs/instalacion_prod.md).
+
+## Verificación y alcance actual
+
+La documentación describe el código del repositorio; no confirma por sí sola que esa versión esté desplegada en Render. La suite local se ejecuta con `python -m unittest discover -s tests -v` y sustituye las integraciones externas. Queda comprobar el acceso real de la aplicación a SharePoint y la recepción de Telegram después de configurar y desplegar.
+
+Los campos del Excel contable y la plantilla del PDF se mantienen. La opción 5 no implementa un formato nuevo de informe por proyecto ni registra un historial de PDFs. La deduplicación de eventos por `update_id` sigue pendiente. Las imágenes existentes se conservan.

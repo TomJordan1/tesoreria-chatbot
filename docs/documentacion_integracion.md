@@ -7,8 +7,8 @@ El sistema se compone de cuatro nodos principales que interactúan de forma secu
 
 1. **Interfaz de Usuario (Telegram):** Punto de entrada. Los usuarios envían comprobantes fotográficos e instrucciones textuales al bot (Toribio).
 2. **Motor de Procesamiento (FastAPI + Groq LLM):** El servidor en Render recibe los webhooks de Telegram. Si hay una imagen, se ejecuta un pipeline de dos pasos: (1) un modelo multimodal transcribe el texto del comprobante, y (2) un modelo de texto clasifica y estructura los datos en un esquema JSON. Los modelos son intercambiables desde la configuración centralizada en `servicios.py`.
-3. **Base de Datos (Excel en SharePoint):** Repositorio central de datos (`REGISTRODIARIO3`). El backend de Python se comunica con Excel usando la API de Microsoft Graph para insertar y leer filas.
-4. **Visualización (Power BI):** El modelo semántico alojado en Power BI Service se conecta directamente al archivo de SharePoint mediante una URL web, actualizando los dashboards de forma programada.
+3. **Excel en SharePoint:** Un archivo contable (`MS_ITEM_ID`, tabla configurada mediante `MS_TABLE_NAME`, habitualmente `REGISTRODIARIO3`) guarda los movimientos. Otro archivo (`MS_USUARIOS_ITEM_ID`, tabla `USUARIOS_AUTORIZADOS`) contiene los permisos de uso del bot. Ambos están en el mismo sitio y biblioteca; el backend usa Microsoft Graph.
+4. **Visualización (Power BI):** La configuración de infraestructura descrita utiliza el archivo contable de SharePoint como origen del modelo semántico. El código del bot no administra ni verifica la actualización de Power BI.
 
 ---
 
@@ -62,7 +62,7 @@ Ver [configuración y activación del webhook protegido](webhook_telegram.md). N
 *   **Ajuste de Endpoints (MS Graph):** El payload de escritura se ajustó para enviar un array exacto de 13 elementos por fila, previniendo errores HTTP 400 por desajuste de dimensiones con la tabla destino.
 *   **Delegación de Código Autoincremental:** El script ahora envía el valor nulo (`None`) en la primera columna del array correspondiente a `CÓDIGO`. Esto permite que la base de datos (Excel) asuma la responsabilidad de generar el identificador de la transacción.
 *   **Lectura Inversa de Saldos:** La función `obtener_saldo_actual` se reescribió para iterar el JSON de respuesta de Microsoft Graph en orden inverso (`reversed(filas)`). Esto evita colisiones o lecturas nulas causadas por filas vacías pre-asignadas en el final de la tabla de Excel.
-*   **Refactorización de Nomenclatura:** Se renombró la función principal de escritura de `guardar_en_sheets` a `guardar_en_excel` para reflejar con exactitud la migración de plataforma. Se unificó el nombre del bot a "Toribio" en todos los mensajes.
+*   **Refactorización de Nomenclatura:** Se renombró la función principal de escritura de `guardar_en_sheets` a `guardar_en_excel` para reflejar la migración de plataforma. La documentación usa "Toribio"; algunos mensajes existentes del bot conservan "Toribot".
 *   **Formato de Salida:** Se estandarizó el uso de sintaxis HTML para el envío de mensajes por Telegram, debido a que el parseador Markdown generaba conflictos con ciertos caracteres de respuesta del LLM.
 *   **Ajuste de Tono y Mensajes:** Se actualizaron los mensajes de respuesta del bot para tener un tono más amigable y conversacional (ej. "¡Muuucho éxito!", "Dame un segundito..."). También se mejoraron los mensajes de error para indicar claramente al usuario qué hacer en caso de fallas de anotación (ej. contactar al área TIC).
 
@@ -78,7 +78,7 @@ Ver [configuración y activación del webhook protegido](webhook_telegram.md). N
 *   **Configuración Centralizada de Modelos:** Los modelos y sus parámetros específicos se definen en un bloque `MODELO_VISION` y `MODELO_TEXTO` al inicio de `servicios.py`. Esto permite cambiar de modelo sin modificar la lógica de las funciones.
 *   **Manejo de Errores con Personalidad:** Se implementó `_identificar_error_llm()` que clasifica errores de la API (modelo no encontrado, rate limit, autenticación, timeout) y devuelve mensajes en el personaje de Toribio para que el usuario sepa qué hacer.
 *   **Defensas Anti-Inyección:** El paso 2 usa un system prompt que declara los bloques `<COMPROBANTE>` y `<CONTEXTO>` como datos puros, nunca instrucciones. El contexto del usuario se sanitiza (reemplazo de `{}`, `` ``` ``, `<>`) y se limita a 200 caracteres.
-*   **Timeouts en Todas las Llamadas:** Se configuró timeout de 30s para Groq (a nivel del cliente OpenAI) y 15s para todas las llamadas a Microsoft Graph y Telegram API.
+*   **Timeouts Configurados:** El timeout de 30s del cliente de Groq limita la espera cuando el modelo está ocupado o el servicio demora; se conserva ese valor y el mensaje que invita a reintentar. Las llamadas HTTP de Microsoft Graph tienen timeout de 15s. Telegram usa 10s para mensajes y metadatos de archivos, 15s para descargar imágenes y 30s para enviar PDFs. El envío de la infografía de ayuda y el aviso de apagado todavía no tienen timeout explícito. No se atribuye un timeout HTTP a la autenticación MSAL en esta configuración.
 
 ### 2.4 Generación de PDF (Comprobantes)
 *   **Limpieza de Variables Residuales:** Se eliminaron las variables `proveedor`, `ruc` y `fecha_registro` de la lista de campos requeridos en `generador_pdf.py`. Operativamente, el campo `acreedor` cubre la función de identificar al proveedor comercial.

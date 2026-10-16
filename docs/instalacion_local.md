@@ -3,8 +3,8 @@
 ### 🔑 Paso 1: Clonar el Repositorio
 
 ```bash
-git clone https://github.com/TomJordan1/toribio_bot.git
-cd toribio_bot
+git clone https://github.com/TomJordan1/tesoreria-chatbot.git
+cd tesoreria-chatbot
 ```
 
 ---

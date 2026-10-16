@@ -3,8 +3,8 @@
 ### 🔑 Paso 1: Clonar el Repositorio
 
 ```bash
-git clone https://github.com/TomJordan1/toribio_bot.git
-cd toribio_bot
+git clone https://github.com/TomJordan1/tesoreria-chatbot.git
+cd tesoreria-chatbot
 ```
 
 ---
@@ -13,7 +13,7 @@ cd toribio_bot
 
 ```bash
 # Crear entorno virtual
-python -3.11 -m venv venv
+python -m venv venv
 
 # Activar en Windows
 venv\Scripts\activate
@@ -54,7 +54,7 @@ Este proyecto utiliza Render y Groq en sus planes gratuitos, para pocos usuarios
 
 Las sesiones se guardan únicamente en memoria. Si Render suspende o reinicia el proceso, las operaciones sin confirmar pueden perderse y habrá que reenviar la foto. Es una limitación aceptada de este despliegue. El primer acceso tras el reposo puede demorar; el aviso de apagado es un intento y no está garantizado. También se aceptan los límites del plan gratuito de Groq.
 
-No se agregaron variables de entorno ni dependencias para las correcciones de validación y manejo de errores descritas en la documentación de integración.
+Las correcciones de validación y manejo de errores no agregan dependencias. El control de acceso y la protección del webhook requieren configurar dos variables adicionales: `MS_USUARIOS_ITEM_ID` y `TELEGRAM_WEBHOOK_SECRET`, detalladas más abajo.
 
 Para experimentar sin escribir en SharePoint, envía una foto, completa los datos y elige **5) Generar PDF sin registrar en Excel** en el resumen. Si Excel está vacío o falla la consulta inicial de saldo, usa `/solo_pdf` para continuar sin saldo inicial. El PDF se marca como prueba y la sesión permanece abierta para editar o cancelar. Las opciones 1 y 2 sí guardan registros reales.
 
