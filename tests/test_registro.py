@@ -202,6 +202,16 @@ class FlujoRegistro(unittest.TestCase):
         self.assertEqual(datos["saldo"], "No calculado (prueba)")
         self.assertEqual(main.user_states["1"]["datos_procesados"], originales)
 
+    def test_modo_pdf_desde_inicio_no_habilita_guardado_en_destino_tradicional(self):
+        main.user_states.clear()
+        self.enviar("/solo_pdf")
+        self.enviar(foto=True)
+        self.saldo.assert_not_called()
+        main.user_states["1"].update(step="confirmar", datos_procesados=datos_validos())
+        self.enviar("1")
+        self.guardar.assert_not_called()
+        self.assertIn("solo para PDF", self.mensajes.call_args.args[1])
+
     def test_fallo_solo_pdf_conserva_datos_para_reintentar(self):
         with patch.object(main, "enviar_comprobante_pdf", side_effect=RuntimeError()):
             self.enviar("5")

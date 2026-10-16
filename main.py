@@ -46,7 +46,7 @@ def mostrar_resumen_y_opciones(chat_id):
     destino = state.get("destino")
     ubicacion = (f"<b>Proyecto:</b> {escape(destino.nombre)}\n<b>Gestión:</b> {escape(destino.gestion)}\n"
                  if destino else "")
-    opciones_registro = ("" if MS_CONFIG_ITEM_ID and not destino else
+    opciones_registro = ("" if state.get("modo_solo_pdf") or (MS_CONFIG_ITEM_ID and not destino) else
                         "1) Registrar movimiento en Excel\n2) Registrar movimiento en Excel y generar PDF\n")
     resumen = (
         f"🧾 <b>Resumen de la operación:</b>\n\n"
@@ -403,10 +403,10 @@ async def telegram_webhook(request: Request):
     if state.get("step") == "confirmar":
         if text in ["1", "2"]:
             destino = state.get("destino")
+            if state.get("modo_solo_pdf") or (MS_CONFIG_ITEM_ID and not destino):
+                enviar_mensaje(chat_id, "Este comprobante está preparado solo para PDF. Usa 5 para exportarlo. Para registrarlo, cancela y envía la foto para comenzar un registro nuevo.")
+                return {"status": "ok"}
             if MS_CONFIG_ITEM_ID:
-                if not destino or state.get("modo_solo_pdf"):
-                    enviar_mensaje(chat_id, "Este comprobante está preparado solo para PDF. Usa 5 para exportarlo. Para registrarlo, cancela y envía la foto eligiendo un proyecto.")
-                    return {"status": "ok"}
                 try:
                     validar_destino_actual(usuario_id, destino)
                 except ErrorCatalogo:
