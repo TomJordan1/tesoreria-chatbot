@@ -129,11 +129,16 @@ class Catalogo:
             self.destinos[pid, gestion] = Destino(pid, self.proyectos[pid][0], gestion, drive, item, hoja, tabla, formato)
         # Evitar que dos proyectos compartan accidentalmente el mismo archivo.
         archivos = {}
+        archivos_por_proyecto = {}
         for destino in self.destinos.values():
             clave = destino.drive_id, destino.item_id
             if clave in archivos and archivos[clave] != destino.proyecto_id:
                 raise ErrorCatalogo("Cada proyecto debe tener su propio archivo Excel.")
+            anterior = archivos_por_proyecto.get(destino.proyecto_id)
+            if anterior is not None and anterior != clave:
+                raise ErrorCatalogo("Las gestiones de un proyecto deben ser hojas del mismo archivo Excel.")
             archivos[clave] = destino.proyecto_id
+            archivos_por_proyecto[destino.proyecto_id] = clave
         for pid, (_, gestion, habilitado) in self.proyectos.items():
             if habilitado and (pid, gestion) not in self.destinos:
                 raise ErrorCatalogo(f"No existe destino para la gestión actual de {pid}.")

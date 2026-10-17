@@ -148,7 +148,8 @@ ignora. No pegues enlaces de descarga temporal ni claves en esa columna.
 
 `PE` guarda fechas DD/MM/YYYY; `US`, MM/DD/YYYY, según la configuración del Excel.
 El formato se aplica al guardar en ese destino; la fecha del recibo no elige gestión.
-Dos gestiones pueden usar el mismo archivo y deben usar tablas diferentes. Dos
+Todas las gestiones de un proyecto deben usar el mismo `drive_id` e `item_id`, con
+hojas y tablas diferentes; el catálogo rechaza repartirlas entre archivos. Dos
 proyectos no pueden apuntar al mismo archivo. El catálogo no puede ser destino.
 
 ### Tabla ACCESOS_PROYECTO
@@ -333,6 +334,22 @@ Si el guardado queda incierto, verifica la fila antes de repetir para evitar dup
 Los registros por proyecto funcionan solo en chats privados. Las sesiones se pierden
 al reiniciar o hibernar Render: se debe reenviar la foto. No se agrega almacenamiento
 persistente de conversaciones ni suscripciones de infraestructura.
+
+## Pendientes antes de darlo por operativo
+
+- Probar una lectura real con la clave y el saldo de DeepSeek; medir precisión,
+  tiempo y consumo con comprobantes propios. Las pruebas locales no utilizan su API.
+- Comprobar lectura y escritura reales con la identidad de Microsoft del bot y
+  resolver la limitación de autenticación workbook descrita en el apartado de Graph.
+- Preparar los archivos y sus fórmulas, ejecutar el diagnóstico y verificar una
+  escritura en copias de prueba antes de cambiar el servicio de Render.
+- La deduplicación de actualizaciones de Telegram por `update_id` sigue pendiente
+  del sistema anterior. Los reenvíos de eventos pueden procesarse otra vez; la
+  protección ante un guardado incierto no equivale a deduplicación general.
+
+Esta rama no incluye un archivo XLSX central ya rellenado: las cuatro tablas de
+esta guía son el formato que debe crearse en SharePoint. Tampoco crea las hojas de
+las gestiones ni modifica automáticamente los permisos de Microsoft.
 
 ## Volver al modo anterior
 

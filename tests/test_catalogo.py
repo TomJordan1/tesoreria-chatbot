@@ -85,6 +85,12 @@ class CatalogoProyectos(unittest.TestCase):
         datos["ACCESOS_PROYECTO"].append(["1", "x", "No"])
         self.assertEqual([d.proyecto_id for d in Catalogo(datos).destinos_usuario(1)], ["y"])
 
+    def test_gestiones_del_mismo_proyecto_no_se_reparten_en_archivos_distintos(self):
+        datos = tablas()
+        datos["DESTINOS_PROYECTO"][2][3] = "otro-archivo-x"
+        with self.assertRaisesRegex(ErrorCatalogo, "hojas del mismo archivo"):
+            Catalogo(datos)
+
     def test_lector_xlsx_identifica_tablas_y_no_evalua_formulas(self):
         # Libro solo en memoria como fixture del lector, nunca se publica como plantilla.
         from openpyxl import Workbook
