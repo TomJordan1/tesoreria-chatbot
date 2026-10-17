@@ -141,3 +141,7 @@ Ahora puedes enviar fotos o mensajes a tu bot desde Telegram y el servidor proce
 ## Proyectos y gestiones
 
 [Configurar proyectos y gestiones](proyectos_y_gestiones.md) explica las cuatro tablas del catálogo, un archivo por proyecto y una hoja por gestión, el campo manual `gestion_actual`, los IDs de Graph, el diagnóstico de solo lectura y el despliegue gradual. No actives `MS_CONFIG_ITEM_ID` con un catálogo incompleto. [DeepSeek](deepseek.md) explica sus variables, saldo y pruebas sin registrar.
+
+## Reenvíos de Telegram
+
+La deduplicación por `update_id` se aplica automáticamente al desplegar esta versión. No necesita nuevas variables ni cambios en Graph o en el registro del webhook. Usa un solo worker y una sola instancia; los IDs se conservan en memoria hasta 24 horas y se pierden al reiniciar. Consulta [la guía de deduplicación](deduplicacion_telegram.md) antes de interpretar la protección como persistente o repetir un guardado incierto.

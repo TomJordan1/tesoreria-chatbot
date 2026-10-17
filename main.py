@@ -16,6 +16,7 @@ from servicios import ErrorConsultaSaldo, ErrorValidacionOperacion, validar_oper
 from servicios import usuario_autorizado
 from servicios import MS_CONFIG_ITEM_ID, obtener_destinos_usuario, validar_destino_actual
 from catalogo import ErrorCatalogo
+from eventos_telegram import RegistroActualizaciones, RegistroSaturado
 from generador_pdf import generar_comprobante_pdf
 
 app = FastAPI()
@@ -30,6 +31,7 @@ if not re.fullmatch(r"[A-Za-z0-9_-]{1,256}", TELEGRAM_WEBHOOK_SECRET):
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 
 user_states = {}
+registro_actualizaciones = RegistroActualizaciones()
 
 @app.get("/")
 def home():
@@ -215,7 +217,26 @@ async def telegram_webhook(request: Request):
     if not secrets.compare_digest(secreto_recibido.encode("utf-8"), TELEGRAM_WEBHOOK_SECRET.encode("utf-8")):
         raise HTTPException(status_code=403, detail="Webhook no autorizado")
     data = await request.json()
+    if not isinstance(data, dict) or type(data.get("update_id")) is not int or data["update_id"] < 0:
+        raise HTTPException(status_code=400, detail="Actualización de Telegram inválida")
     if "message" not in data: return {"status": "ok"}
+    if not isinstance(data["message"], dict):
+        raise HTTPException(status_code=400, detail="Mensaje de Telegram inválido")
+    try:
+        nuevo = registro_actualizaciones.aceptar(data["update_id"])
+    except RegistroSaturado:
+        raise HTTPException(status_code=503, detail="Registro de actualizaciones temporalmente lleno")
+    if not nuevo:
+        print(f"Actualización Telegram repetida omitida: {data['update_id']}")
+        return {"status": "ok"}
+
+    # El ID queda reservado incluso si este intento lanza una excepción: algunos
+    # efectos pueden haberse completado antes de perder la respuesta HTTP.
+    return procesar_actualizacion(data)
+
+
+def procesar_actualizacion(data):
+    """Procesa una actualización ya autenticada y reservada por el webhook."""
 
     message = data["message"]
         

@@ -4,6 +4,7 @@ Las integraciones se sustituyen al importar; se ejecutan las funciones reales
 de servicios.py y main.py con respuestas controladas.
 """
 import importlib.util
+from itertools import count
 import os
 from pathlib import Path
 import sys
@@ -11,9 +12,11 @@ import tempfile
 import types
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
+import eventos_telegram
 
 
 RAIZ = Path(__file__).resolve().parents[1]
+IDS_ACTUALIZACIONES = count(100000)
 
 
 class AplicacionPrueba:
@@ -148,7 +151,7 @@ class FlujoRegistro(unittest.TestCase):
         self.addCleanup(os.chdir, self.anterior)
         main.user_states["1"] = dict(step="confirmar", datos_procesados=datos_validos(), saldo_previo=100, file_id="foto")
 
-    def enviar(self, texto=None, foto=False, usuario_id=1, chat_id=1):
+    def enviar(self, texto=None, foto=False, usuario_id=1, chat_id=1, update_id=None):
         mensaje = {"chat": {"id": chat_id}, "text": texto or ""}
         if usuario_id is not None:
             mensaje["from"] = {"id": usuario_id}
@@ -157,7 +160,7 @@ class FlujoRegistro(unittest.TestCase):
         request = types.SimpleNamespace()
         request.headers = {"X-Telegram-Bot-Api-Secret-Token": main.TELEGRAM_WEBHOOK_SECRET}
         async def json():
-            return {"message": mensaje}
+            return {"update_id": next(IDS_ACTUALIZACIONES) if update_id is None else update_id, "message": mensaje}
         request.json = json
         # Este webhook y request.json no suspenden en las pruebas: no hace falta
         # abrir sockets ni iniciar un bucle de eventos para ejecutar la corrutina.

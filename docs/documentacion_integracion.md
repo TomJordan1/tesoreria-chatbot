@@ -13,6 +13,13 @@ de Excel en el sistema 1900. Normaliza ambas antes de comparar el día, evitando
 reiniciar el correlativo cuando Graph devuelve un número en lugar de DD/MM/YYYY.
 Esto no selecciona la gestión: se sigue usando `gestion_actual` del catálogo.
 
+El webhook reserva cada `update_id` antes de ejecutar el flujo y omite los reenvíos
+con respuesta 200, incluso si el primer intento falló parcialmente. El registro
+local conserva hasta 10 000 IDs durante 24 horas; al llenarse devuelve 503 para
+eventos nuevos sin expulsar IDs vigentes. Se mantiene el despliegue de un worker
+y memoria temporal, sin servicios adicionales. Consulta [deduplicación de Telegram](deduplicacion_telegram.md)
+para el alcance ante fallos, reinicios y mensajes nuevos con el mismo contenido.
+
 ## 1. Arquitectura del Sistema
 El sistema se compone de cuatro nodos principales que interactúan de forma secuencial:
 
@@ -59,7 +66,7 @@ La tabla `USUARIOS_AUTORIZADOS` se ubica en un Excel separado, con columnas `tel
 
 La lista se cachea dos minutos en memoria. Al vencer, un fallo descarta el acceso anterior y establece 30 segundos antes de reintentar, manteniendo `/mi_id` disponible. Una fila inactiva prevalece ante duplicados. El mensaje de acceso informa al usuario que, si acaba de ser habilitado, el cambio puede tardar hasta dos minutos en reflejarse y que debe volver a escribir al finalizar ese plazo. Este aviso no modifica la duración de la caché ni promete acceso si falla la lectura. Las pruebas cubren lectura por encabezados, bajas y expiración, fallos de consulta, acceso público al ID y bloqueo del resto del flujo para desconocidos.
 
-Antes de habilitar esta versión, preparar la tabla siguiendo [la guía de control de acceso](control_acceso.md). La lectura real en SharePoint debe comprobarse en el despliegue con las credenciales existentes. La deduplicación mediante `update_id` sigue pendiente.
+Antes de habilitar esta versión, preparar la tabla siguiendo [la guía de control de acceso](control_acceso.md). La lectura real en SharePoint debe comprobarse en el despliegue con las credenciales existentes. La deduplicación mediante `update_id` está implementada en memoria con el alcance descrito al inicio de este documento.
 
 ### Validación del secreto del webhook
 

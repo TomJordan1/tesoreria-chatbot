@@ -373,9 +373,11 @@ persistente de conversaciones ni suscripciones de infraestructura.
   resolver la limitación de autenticación workbook descrita en el apartado de Graph.
 - Preparar los archivos y sus fórmulas, ejecutar el diagnóstico y verificar una
   escritura en copias de prueba antes de cambiar el servicio de Render.
-- La deduplicación de actualizaciones de Telegram por `update_id` sigue pendiente
-  del sistema anterior. Los reenvíos de eventos pueden procesarse otra vez; la
-  protección ante un guardado incierto no equivale a deduplicación general.
+
+La [deduplicación por update_id](deduplicacion_telegram.md) ya protege contra
+reenvíos del mismo evento dentro de un proceso: conserva hasta 10 000 IDs durante
+24 horas. No agrega configuración ni gasto. No persiste entre reinicios o réplicas
+y no detecta comprobantes enviados de nuevo como mensajes distintos.
 
 Los [XLSX de ejemplo](../ejemplos/excel/README.md) incluyen las cuatro tablas del
 catálogo y dos hojas de movimientos, pero no contienen IDs reales ni habilitan
