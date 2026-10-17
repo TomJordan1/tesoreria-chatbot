@@ -20,6 +20,8 @@ Esta rama agrega [DeepSeek opcional](docs/deepseek.md) y [proyectos y gestiones 
 
 Cada proyecto tiene su propio Excel y una hoja por gestión. El administrador define `gestion_actual` (por ejemplo, `2026`); el bot nunca la cambia por calendario. Cada persona solo puede elegir sus proyectos autorizados.
 
+En [ejemplos/excel](ejemplos/excel/README.md) hay dos archivos XLSX: un catálogo de accesos/configuración y un proyecto con hojas 2025 y 2026. Su README explica los campos, datos ficticios, saldo inicial, fórmulas y conexión con Graph.
+
 ## Alcance y costos
 
 El proyecto está pensado para pocos usuarios y uso ocasional, utilizando el plan gratuito de Render y los modelos disponibles en el plan gratuito de Groq. Ese sigue siendo el modo original sin gasto adicional de IA, sujeto a la disponibilidad de modelos y cuota. La alternativa DeepSeek requiere saldo y cobra por consumo; se activa expresamente con `IA_PROVEEDOR=deepseek`. Se aprovecha el entorno Microsoft 365 ya disponible en la organización.

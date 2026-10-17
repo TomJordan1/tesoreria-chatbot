@@ -28,6 +28,12 @@ Proyecto X.xlsx              Proyecto Y.xlsx
 El catálogo es una agenda de destinos: no almacena movimientos, claves ni saldos.
 No crea archivos, hojas, tablas o permisos de Microsoft automáticamente.
 
+Hay [dos Excel de ejemplo y una guía de adaptación](../ejemplos/excel/README.md)
+en `ejemplos/excel/`: el catálogo de accesos/configuración y un archivo contable
+con hojas 2025 y 2026. Sus datos son ficticios y sus accesos están desactivados.
+La guía explica qué borrar, qué fórmulas conservar y cómo configurar las columnas
+calculadas en Excel antes de probar la escritura desde Graph.
+
 ## Antes de empezar
 
 1. Trabaja primero con copias de prueba, sin modificar la tabla contable operativa.
@@ -371,9 +377,10 @@ persistente de conversaciones ni suscripciones de infraestructura.
   del sistema anterior. Los reenvíos de eventos pueden procesarse otra vez; la
   protección ante un guardado incierto no equivale a deduplicación general.
 
-Esta rama no incluye un archivo XLSX central ya rellenado: las cuatro tablas de
-esta guía son el formato que debe crearse en SharePoint. Tampoco crea las hojas de
-las gestiones ni modifica automáticamente los permisos de Microsoft.
+Los [XLSX de ejemplo](../ejemplos/excel/README.md) incluyen las cuatro tablas del
+catálogo y dos hojas de movimientos, pero no contienen IDs reales ni habilitan
+personas o proyectos. Debes adaptarlos y subir copias a SharePoint. El bot no crea
+las hojas de las gestiones ni modifica automáticamente los permisos de Microsoft.
 
 ## Volver al modo anterior
 
