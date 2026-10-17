@@ -6,7 +6,7 @@ import math
 import time
 import requests
 from openai import OpenAI
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 import msal
 from catalogo import Catalogo, ErrorCatalogo, leer_tablas_xlsx
 
@@ -501,6 +501,28 @@ Devuelve exclusivamente un JSON válido con esta estructura:
         return {"error": True, "mensaje": msg} if msg else {"error": True}
 
 
+def _fecha_excel(valor, formato_usa=False):
+    """Normaliza fechas de Graph: texto o serial Excel del sistema de fechas 1900."""
+    if isinstance(valor, datetime):
+        return valor.date()
+    if isinstance(valor, date):
+        return valor
+    if type(valor) in (int, float):
+        if not math.isfinite(valor) or valor < 1:
+            return None
+        try:
+            return (datetime(1899, 12, 30) + timedelta(days=valor)).date()
+        except (OverflowError, ValueError):
+            return None
+    if isinstance(valor, str):
+        for formato in ("%m/%d/%Y" if formato_usa else "%d/%m/%Y", "%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"):
+            try:
+                return datetime.strptime(valor.strip(), formato).date()
+            except ValueError:
+                continue
+    return None
+
+
 def calcular_codigo_y_nro(fecha_str: str, formato_usa: bool = False, destino=None) -> tuple:
     """Calcula el autoincremental del día consultando las filas de Excel."""
     meses_letras = ["E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"]
@@ -520,6 +542,7 @@ def calcular_codigo_y_nro(fecha_str: str, formato_usa: bool = False, destino=Non
 
     token = obtener_token_ms()
     nro_operacion_dia = 1
+    fecha_objetivo = _fecha_excel(fecha_str, formato_usa)
     
     if token:
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
@@ -531,7 +554,7 @@ def calcular_codigo_y_nro(fecha_str: str, formato_usa: bool = False, destino=Non
                 for fila in filas:
                     valores = fila.get("values", [[]])[0]
                     # Indice 1 es fecha, indice 2 es nro_operacion
-                    if len(valores) > 2 and valores[1] == fecha_str:
+                    if fecha_objetivo is not None and len(valores) > 2 and _fecha_excel(valores[1], formato_usa) == fecha_objetivo:
                         try:
                             nro = int(valores[2])
                             if nro > conteo_hoy:

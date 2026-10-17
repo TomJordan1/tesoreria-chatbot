@@ -8,6 +8,11 @@ La selección `IA_PROVEEDOR=deepseek` usa DeepSeek en los dos pasos sin razonami
 
 Consulta [el procedimiento completo de proyectos](proyectos_y_gestiones.md) y [DeepSeek](deepseek.md). El diagnóstico `python herramientas/verificar_configuracion.py` solo lee. La limitación de autenticación de workbook descrita en la guía de Graph sigue pendiente de validar/resolver en la integración real. Las notas de cambios siguientes incluyen decisiones históricas; sus referencias a no agregar dependencias/modelos describen esos cambios puntuales, no toda esta rama.
 
+El correlativo diario reconoce tanto fechas escritas como texto como fechas numéricas
+de Excel en el sistema 1900. Normaliza ambas antes de comparar el día, evitando
+reiniciar el correlativo cuando Graph devuelve un número en lugar de DD/MM/YYYY.
+Esto no selecciona la gestión: se sigue usando `gestion_actual` del catálogo.
+
 ## 1. Arquitectura del Sistema
 El sistema se compone de cuatro nodos principales que interactúan de forma secuencial:
 

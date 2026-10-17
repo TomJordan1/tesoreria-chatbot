@@ -92,6 +92,20 @@ class ValidacionRegistro(unittest.TestCase):
 
 
 class ConsultaSaldo(unittest.TestCase):
+    def test_correlativo_reconoce_fechas_numericas_y_texto_del_mismo_dia(self):
+        from datetime import datetime
+        serial = (datetime(2026, 10, 16) - datetime(1899, 12, 30)).days
+        for usa, texto in ((False, "16/10/2026"), (True, "10/16/2026")):
+            filas = [{"values": [[None, serial, 2]]}, {"values": [[None, texto, 3]]},
+                     {"values": [[None, serial + 1, 40]]}]
+            with self.subTest(usa=usa), patch.object(servicios, "obtener_token_ms", return_value="token"), patch.object(servicios.requests, "get", return_value=Mock(status_code=200, json=lambda: {"value": filas})):
+                self.assertEqual(servicios.calcular_codigo_y_nro(texto, usa), ("O16102604", 4))
+
+    def test_fecha_excel_invalida_no_es_otra_fecha_valida(self):
+        for valor in (None, True, "", "no disponible", "32/10/2026", float("nan"), float("inf"), -1, 10**20):
+            with self.subTest(valor=valor):
+                self.assertIsNone(servicios._fecha_excel(valor))
+
     def consultar(self, filas):
         with patch.object(servicios, "obtener_token_ms", return_value="token"), patch.object(servicios.requests, "get", return_value=Mock(status_code=200, json=lambda: {"value": filas})):
             return servicios.obtener_saldo_actual()
