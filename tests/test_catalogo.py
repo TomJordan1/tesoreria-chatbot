@@ -37,6 +37,18 @@ class CatalogoProyectos(unittest.TestCase):
         datos["PROYECTOS"][1][2] = "2025"
         self.assertEqual(Catalogo(datos).destinos_usuario(1)[0].tabla, "MOV_X_2025")
 
+    def test_rutas_distintas_y_mismo_nombre_no_confunden_archivos(self):
+        datos = tablas()
+        datos["DESTINOS_PROYECTO"][0].append("ruta_archivo")
+        for fila in datos["DESTINOS_PROYECTO"][1:]:
+            fila.append("Proyectos/X/Finanzas/Movimientos.xlsx" if fila[0] == "x" else "Áreas/Y/Tesorería/Movimientos.xlsx")
+        destinos = Catalogo(datos).destinos_usuario(1)
+        self.assertEqual([d.item_id for d in destinos], ["excel-x", "excel-y"])
+        self.assertNotEqual(destinos[0].url_tabla(), destinos[1].url_tabla())
+        # La ruta legible no cambia el destino: los IDs siguen siendo la identidad.
+        datos["DESTINOS_PROYECTO"][2][-1] = "Nueva carpeta/Movimientos.xlsx"
+        Catalogo(datos).validar_destino(1, destinos[0])
+
     def test_inactivo_y_ajeno_no_pueden_usar_destino(self):
         catalogo = Catalogo(tablas())
         self.assertEqual(catalogo.destinos_usuario(2), [])
@@ -156,6 +168,17 @@ class ServiciosCatalogo(unittest.TestCase):
             self.assertEqual(post.call_args.args[0], destino.url_tabla() + "/rows/add")
             self.assertEqual(codigo.call_args.kwargs["destino"], destino)
             self.assertEqual(len(post.call_args.kwargs["json"]["values"][0]), 13)
+
+    def test_destino_en_otra_biblioteca_no_usa_biblioteca_del_catalogo(self):
+        datos = tablas()
+        datos["DESTINOS_PROYECTO"][3][2] = "biblioteca-proyecto-y"
+        destino = Catalogo(datos).destinos_usuario(1)[1]
+        with patch.object(servicios, "MS_DRIVE_ID", "biblioteca-central"), patch.object(servicios, "obtener_token_ms", return_value="token"), patch.object(servicios.requests, "get", return_value=Mock(status_code=200, json=lambda: {"value": []})) as get, patch.object(servicios, "verificar_tabla_destino"), patch.object(servicios, "calcular_codigo_y_nro", return_value=("codigo", 1)), patch.object(servicios.requests, "post") as post:
+            servicios.obtener_saldo_actual(destino)
+            servicios.guardar_en_excel(datos_validos(), 100, destino=destino)
+            for url in (get.call_args.args[0], post.call_args.args[0]):
+                self.assertIn("/drives/biblioteca-proyecto-y/items/excel-y/", url)
+                self.assertNotIn("biblioteca-central", url)
 
     def test_hoja_o_esquema_incorrectos_no_permiten_post(self):
         destino = Catalogo(tablas()).destinos_usuario(1)[0]

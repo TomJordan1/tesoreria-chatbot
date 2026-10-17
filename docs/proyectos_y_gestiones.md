@@ -53,6 +53,19 @@ La biblioteca puede ser distinta de la del catálogo: cada destino tiene su prop
 `drive_id`. Puedes usar carpetas distintas para ordenar proyectos; la carpeta no
 se usa para elegir el destino una vez obtenidos los IDs.
 
+**Los archivos no necesitan estar juntos.** Por ejemplo, estos dos archivos pueden
+tener el mismo nombre y pertenecer a proyectos diferentes:
+
+```text
+Biblioteca Documentos / Proyectos / Proyecto X / Finanzas / Movimientos.xlsx
+Biblioteca Documentos / Áreas / Proyecto Y / Tesorería / Movimientos.xlsx
+```
+
+Cada uno tiene su propio `item_id`. Si están en bibliotecas distintas, también
+cambia `drive_id`. El bot usa el par de IDs de cada destino, no una carpeta global
+ni el nombre del archivo. `MS_DRIVE_ID` solo localiza el Excel central cuando está
+activado el modo de proyectos; no obliga a que los archivos contables estén allí.
+
 En cada archivo:
 
 1. Crea una hoja llamada `2026`, por ejemplo. Si ya existe, comprueba su formato.
@@ -135,16 +148,27 @@ Una fila por proyecto. Para cambiar el año activo, **solo tú editas ese campo*
 
 ### Tabla DESTINOS_PROYECTO
 
-| proyecto_id | gestion | drive_id | item_id | hoja | tabla | formato_fecha |
-|---|---|---|---|---|---|---|
-| proyecto_x | 2025 | ID_BIBLIOTECA_X | ID_ARCHIVO_X | 2025 | MOV_X_2025 | PE |
-| proyecto_x | 2026 | ID_BIBLIOTECA_X | ID_ARCHIVO_X | 2026 | MOV_X_2026 | PE |
-| proyecto_y | 2025 | ID_BIBLIOTECA_Y | ID_ARCHIVO_Y | 2025 | MOV_Y_2025 | US |
+| proyecto_id | gestion | drive_id | item_id | hoja | tabla | formato_fecha | ruta_archivo |
+|---|---|---|---|---|---|---|---|
+| proyecto_x | 2025 | ID_BIBLIOTECA_X | ID_ARCHIVO_X | 2025 | MOV_X_2025 | PE | Proyectos/Proyecto X/Finanzas/Movimientos.xlsx |
+| proyecto_x | 2026 | ID_BIBLIOTECA_X | ID_ARCHIVO_X | 2026 | MOV_X_2026 | PE | Proyectos/Proyecto X/Finanzas/Movimientos.xlsx |
+| proyecto_y | 2025 | ID_BIBLIOTECA_Y | ID_ARCHIVO_Y | 2025 | MOV_Y_2025 | US | Áreas/Proyecto Y/Tesorería/Movimientos.xlsx |
 
 Una fila por combinación proyecto/gestión. `drive_id` e `item_id` son IDs de Graph,
-no direcciones web; `hoja` y `tabla` son los nombres exactos en ese archivo. Puedes
-añadir una columna informativa `url_archivo` para abrirlo fácilmente: el bot la
-ignora. No pegues enlaces de descarga temporal ni claves en esa columna.
+no direcciones web; `hoja` y `tabla` son los nombres exactos en ese archivo.
+`ruta_archivo` es una columna opcional para que puedas reconocer la carpeta y el
+archivo, relativa a su biblioteca. Puedes añadir también `url_archivo` con el
+enlace normal de SharePoint para abrirlo fácilmente. Ambas columnas son referencias
+para las personas: el bot no las resuelve ni sustituye con ellas los IDs. No pegues
+enlaces de descarga temporal ni claves. Una ruta escrita sin `drive_id` e `item_id`
+no basta para configurar un destino.
+
+Para obtener el `item_id`, usa la ruta de **ese archivo**, con todas sus carpetas,
+en la consulta del paso 3. No reutilices la ruta del catálogo para los otros Excel.
+Si cambias de biblioteca o reemplazas un archivo, vuelve a consultar sus IDs y
+actualiza todas las filas de ese proyecto. Tras moverlo o renombrarlo dentro de su
+biblioteca, comprueba los IDs y actualiza la ruta y enlace informativos. El bot no
+busca automáticamente otro archivo por un nombre parecido si falla el destino.
 
 `PE` guarda fechas DD/MM/YYYY; `US`, MM/DD/YYYY, según la configuración del Excel.
 El formato se aplica al guardar en ese destino; la fecha del recibo no elige gestión.
