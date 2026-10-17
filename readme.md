@@ -14,6 +14,10 @@ Este chatbot de tesorería de Telegram está diseñado para la gestión y automa
 
 El bot recibe fotografías de recibos, boletas o facturas, utiliza un Modelo de Lenguaje Visual (VLM) para comprender e inyectar la información en una base de datos centralizada en SharePoint a través de Microsoft Graph API, y ofrece la capacidad opcional de generar al instante un comprobante de validación en PDF procesado 100% de manera local.
 
+## Fase 2
+
+El trabajo de esta rama forma parte de la segunda fase del proyecto. [Consulta su alcance y estado](docs/fase_2.md): proyectos y gestiones, configuración de IA, PDF independiente y protección de Telegram. Un segundo canal por WhatsApp queda en evaluación; todavía no está implementado.
+
 ## Configuración de esta rama
 
 Esta rama agrega [DeepSeek opcional](docs/deepseek.md) y [proyectos y gestiones desde un Excel central](docs/proyectos_y_gestiones.md). La guía de proyectos explica el orden completo para preparar archivos, obtener IDs con Graph, configurar Render y comprobar permisos antes de activar registros. Sin `MS_CONFIG_ITEM_ID` se conserva el destino único; sin `IA_PROVEEDOR` se conserva Groq.

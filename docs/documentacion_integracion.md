@@ -4,6 +4,10 @@ Este documento detalla la arquitectura técnica actual del sistema de tesorería
 
 ## Estado de esta rama: DeepSeek y proyectos
 
+Este trabajo forma parte de la [fase 2](fase_2.md) indicada por el responsable del
+proyecto. WhatsApp se registra como un segundo canal en evaluación, sin implementación
+ni cambio de alcance confirmado para el código actual de Telegram.
+
 La selección `IA_PROVEEDOR=deepseek` usa DeepSeek en los dos pasos sin razonamiento y sin reintentos automáticos del SDK; de lo contrario se conserva Groq. El catálogo opcional `MS_CONFIG_ITEM_ID` reúne usuarios, proyectos con `gestion_actual` definida manualmente, destinos por gestión y permisos por persona/proyecto. Se descarga como archivo con Graph y se lee con openpyxl. Cada proyecto tiene un archivo; cada gestión, una hoja y tabla. Antes de escribir se revalida el catálogo y se comprueban hoja y 13 encabezados; no hay redirección al destino global ante errores.
 
 Consulta [el procedimiento completo de proyectos](proyectos_y_gestiones.md) y [DeepSeek](deepseek.md). El diagnóstico `python herramientas/verificar_configuracion.py` solo lee. La limitación de autenticación de workbook descrita en la guía de Graph sigue pendiente de validar/resolver en la integración real. Las notas de cambios siguientes incluyen decisiones históricas; sus referencias a no agregar dependencias/modelos describen esos cambios puntuales, no toda esta rama.
